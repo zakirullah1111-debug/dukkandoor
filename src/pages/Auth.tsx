@@ -4,13 +4,13 @@ import { ArrowLeft, Phone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/contexts/AuthContext';
-import { UserRole } from '@/types';
+import { toast } from 'sonner';
 
 const Auth = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const role = (location.state as { role: UserRole })?.role || 'customer';
-  const { login } = useAuth();
+  const role = (location.state as { role: string })?.role || 'customer';
+  const { signUp } = useAuth();
 
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
@@ -18,7 +18,7 @@ const Auth = () => {
   const [loading, setLoading] = useState(false);
 
   const handleSendOtp = () => {
-    if (phone.length < 10) return;
+    if (phone.replace(/\s/g, '').length < 10) return;
     setLoading(true);
     setTimeout(() => {
       setStep('otp');
@@ -26,14 +26,18 @@ const Auth = () => {
     }, 800);
   };
 
-  const handleVerifyOtp = () => {
+  const handleVerifyOtp = async () => {
     if (otp.length < 4) return;
     setLoading(true);
-    setTimeout(() => {
-      login(phone, role);
+    try {
+      await signUp(phone, role);
+      toast.success('Welcome to DukkanDoor!');
+      navigate('/setup', { replace: true });
+    } catch (err: any) {
+      toast.error(err.message || 'Authentication failed');
+    } finally {
       setLoading(false);
-      navigate('/setup');
-    }, 800);
+    }
   };
 
   const roleLabels: Record<string, string> = {
@@ -54,7 +58,7 @@ const Auth = () => {
         </h1>
         <p className="text-muted-foreground mt-1">
           {step === 'phone'
-            ? `Signing up as ${roleLabels[role]}`
+            ? `Signing up as ${roleLabels[role] || role}`
             : `We sent a code to ${phone}`}
         </p>
 
@@ -72,7 +76,7 @@ const Auth = () => {
                   maxLength={11}
                 />
               </div>
-              <Button onClick={handleSendOtp} disabled={phone.length < 10 || loading} className="w-full h-14 text-base font-display font-semibold rounded-xl">
+              <Button onClick={handleSendOtp} disabled={phone.replace(/\s/g, '').length < 10 || loading} className="w-full h-14 text-base font-display font-semibold rounded-xl">
                 {loading ? 'Sending...' : 'Send OTP'}
               </Button>
             </>

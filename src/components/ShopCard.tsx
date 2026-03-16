@@ -11,8 +11,12 @@ const ShopCard = ({ shop }: { shop: Shop }) => {
       className="bg-card rounded-xl border border-border p-4 w-full text-left active:scale-[0.98] transition-transform animate-fade-in"
     >
       <div className="flex gap-3">
-        <div className="w-14 h-14 rounded-xl bg-orange-light flex items-center justify-center shrink-0">
-          <Store className="w-7 h-7 text-primary" />
+        <div className="w-14 h-14 rounded-xl bg-orange-light flex items-center justify-center shrink-0 overflow-hidden">
+          {shop.logo_url ? (
+            <img src={shop.logo_url} alt={shop.shop_name} className="w-full h-full object-cover" />
+          ) : (
+            <Store className="w-7 h-7 text-primary" />
+          )}
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
@@ -25,7 +29,7 @@ const ShopCard = ({ shop }: { shop: Shop }) => {
           </div>
           <p className="text-sm text-muted-foreground">{shop.category}</p>
           <div className="flex items-center gap-3 mt-1.5">
-            {shop.rating && (
+            {shop.rating && shop.rating > 0 && (
               <div className="flex items-center gap-1">
                 <Star className="w-3.5 h-3.5 text-warning fill-warning" />
                 <span className="text-xs font-semibold">{shop.rating}</span>

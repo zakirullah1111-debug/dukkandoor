@@ -1,21 +1,22 @@
 import { useNavigate } from 'react-router-dom';
-import { LogOut, ChevronRight, User, MapPin, Phone } from 'lucide-react';
+import { LogOut, Phone, MapPin } from 'lucide-react';
 import MobileLayout from '@/components/MobileLayout';
 import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
 
 const Profile = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
+    toast.success('Logged out');
     navigate('/', { replace: true });
   };
 
   return (
     <MobileLayout>
       <div className="px-4 pt-6">
-        {/* Avatar */}
         <div className="flex items-center gap-4 mb-8">
           <div className="w-16 h-16 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
             <span className="font-display text-2xl font-bold">{user?.name?.charAt(0) || '?'}</span>

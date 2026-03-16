@@ -1,53 +1,86 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Minus, Plus, Trash2, MapPin } from 'lucide-react';
+import { ArrowLeft, Minus, Plus, Trash2, MapPin, Locate, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useCart } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { useOrders } from '@/contexts/OrderContext';
-import { mockShops } from '@/data/mockData';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 const CartPage = () => {
   const navigate = useNavigate();
   const { items, updateQuantity, removeItem, clearCart, subtotal, deliveryFee, total, shopId } = useCart();
-  const { user } = useAuth();
-  const { addOrder } = useOrders();
+  const { user, session } = useAuth();
   const [address, setAddress] = useState(user?.address || '');
   const [placing, setPlacing] = useState(false);
+  const [locating, setLocating] = useState(false);
+  const [shopName, setShopName] = useState('');
 
-  const shop = mockShops.find(s => s.id === shopId);
+  useEffect(() => {
+    if (shopId) {
+      (supabase as any).from('shops').select('shop_name').eq('id', shopId).single().then(({ data }: any) => {
+        if (data) setShopName(data.shop_name);
+      });
+    }
+  }, [shopId]);
 
-  const handlePlaceOrder = () => {
-    if (!address.trim()) return;
+  const getCurrentLocation = async () => {
+    if (!navigator.geolocation) {
+      toast.error('Geolocation not supported by your browser');
+      return;
+    }
+    setLocating(true);
+    try {
+      const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 10000 });
+      });
+      const { latitude, longitude } = pos.coords;
+      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
+      const data = await res.json();
+      setAddress(data.display_name || `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`);
+      toast.success('Location detected!');
+    } catch {
+      toast.error('Please enable location access or enter address manually');
+    } finally {
+      setLocating(false);
+    }
+  };
+
+  const handlePlaceOrder = async () => {
+    if (!address.trim() || !session?.user) return;
     setPlacing(true);
-    setTimeout(() => {
-      const order = {
-        id: `order-${Date.now()}`,
-        customer_id: user?.id || '',
-        shop_id: shopId || '',
-        rider_id: null,
-        status: 'placed' as const,
-        total_amount: total,
+    try {
+      const { data: order, error: orderErr } = await (supabase as any).from('orders').insert({
+        customer_id: session.user.id,
+        shop_id: shopId,
+        status: 'placed',
+        total_amount: Math.round(total),
         delivery_fee: deliveryFee,
-        payment_method: 'cash_on_delivery' as const,
-        delivery_address: address,
-        created_at: new Date().toISOString(),
-        shop,
-        items: items.map(i => ({
-          id: `oi-${Date.now()}-${i.product.id}`,
-          order_id: '',
-          product_id: i.product.id,
-          quantity: i.quantity,
-          price_at_order: i.product.price * (1 - i.product.discount_percent / 100),
-          product: i.product,
-        })),
-      };
-      addOrder(order);
+        delivery_address: address.trim(),
+        payment_method: 'cash_on_delivery',
+      }).select().single();
+
+      if (orderErr) throw orderErr;
+
+      const orderItems = items.map(i => ({
+        order_id: order.id,
+        product_id: i.product.id,
+        quantity: i.quantity,
+        price_at_order: Math.round(i.product.price * (1 - i.product.discount_percent / 100)),
+      }));
+
+      const { error: itemsErr } = await (supabase as any).from('order_items').insert(orderItems);
+      if (itemsErr) throw itemsErr;
+
       clearCart();
-      setPlacing(false);
+      toast.success('Order placed successfully!');
       navigate('/order-tracking', { state: { orderId: order.id } });
-    }, 1000);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to place order');
+    } finally {
+      setPlacing(false);
+    }
   };
 
   if (items.length === 0) {
@@ -71,11 +104,8 @@ const CartPage = () => {
           <h1 className="font-display text-xl font-bold">Your Cart</h1>
         </div>
 
-        {shop && (
-          <p className="text-sm text-muted-foreground mb-4">From {shop.shop_name}</p>
-        )}
+        {shopName && <p className="text-sm text-muted-foreground mb-4">From {shopName}</p>}
 
-        {/* Items */}
         <div className="space-y-3 mb-6">
           {items.map(item => {
             const discounted = item.product.price * (1 - item.product.discount_percent / 100);
@@ -111,9 +141,17 @@ const CartPage = () => {
               placeholder="Enter your full address"
               value={address}
               onChange={e => setAddress(e.target.value)}
-              className="h-14 pl-10 rounded-xl text-base"
+              className="h-14 pl-10 pr-12 rounded-xl text-base"
             />
           </div>
+          <button
+            onClick={getCurrentLocation}
+            disabled={locating}
+            className="mt-2 flex items-center gap-2 text-sm text-primary font-medium min-h-[40px] active:scale-95 transition-transform"
+          >
+            {locating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Locate className="w-4 h-4" />}
+            {locating ? 'Detecting location...' : 'Use My Current Location'}
+          </button>
         </div>
 
         {/* Price Breakdown */}
@@ -137,7 +175,7 @@ const CartPage = () => {
           disabled={!address.trim() || placing}
           className="w-full h-14 text-base font-display font-semibold rounded-xl mb-6"
         >
-          {placing ? 'Placing Order...' : 'Place Order (Cash on Delivery)'}
+          {placing ? <><Loader2 className="w-5 h-5 animate-spin mr-2" /> Placing Order...</> : 'Place Order (Cash on Delivery)'}
         </Button>
       </div>
     </div>
