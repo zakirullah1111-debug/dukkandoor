@@ -14,7 +14,320 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      order_items: {
+        Row: {
+          id: string
+          order_id: string
+          price_at_order: number
+          product_id: string
+          quantity: number
+        }
+        Insert: {
+          id?: string
+          order_id: string
+          price_at_order?: number
+          product_id: string
+          quantity?: number
+        }
+        Update: {
+          id?: string
+          order_id?: string
+          price_at_order?: number
+          product_id?: string
+          quantity?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      orders: {
+        Row: {
+          created_at: string
+          customer_id: string
+          delivery_address: string
+          delivery_fee: number
+          id: string
+          payment_method: string
+          rider_id: string | null
+          shop_id: string
+          status: string
+          total_amount: number
+        }
+        Insert: {
+          created_at?: string
+          customer_id: string
+          delivery_address?: string
+          delivery_fee?: number
+          id?: string
+          payment_method?: string
+          rider_id?: string | null
+          shop_id: string
+          status?: string
+          total_amount?: number
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string
+          delivery_address?: string
+          delivery_fee?: number
+          id?: string
+          payment_method?: string
+          rider_id?: string | null
+          shop_id?: string
+          status?: string
+          total_amount?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_rider_id_fkey"
+            columns: ["rider_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_shop_id_fkey"
+            columns: ["shop_id"]
+            isOneToOne: false
+            referencedRelation: "shops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      products: {
+        Row: {
+          category: string
+          created_at: string
+          description: string
+          discount_percent: number
+          id: string
+          image_url: string
+          in_stock: boolean
+          name: string
+          price: number
+          shop_id: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          description?: string
+          discount_percent?: number
+          id?: string
+          image_url?: string
+          in_stock?: boolean
+          name: string
+          price?: number
+          shop_id: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          description?: string
+          discount_percent?: number
+          id?: string
+          image_url?: string
+          in_stock?: boolean
+          name?: string
+          price?: number
+          shop_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "products_shop_id_fkey"
+            columns: ["shop_id"]
+            isOneToOne: false
+            referencedRelation: "shops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          address: string
+          created_at: string
+          id: string
+          name: string
+          phone: string
+          role: string
+          village: string
+        }
+        Insert: {
+          address?: string
+          created_at?: string
+          id: string
+          name?: string
+          phone?: string
+          role?: string
+          village?: string
+        }
+        Update: {
+          address?: string
+          created_at?: string
+          id?: string
+          name?: string
+          phone?: string
+          role?: string
+          village?: string
+        }
+        Relationships: []
+      }
+      ratings: {
+        Row: {
+          comment: string
+          created_at: string
+          id: string
+          order_id: string
+          rated_by: string
+          rating: number
+          rider_id: string
+        }
+        Insert: {
+          comment?: string
+          created_at?: string
+          id?: string
+          order_id: string
+          rated_by: string
+          rating: number
+          rider_id: string
+        }
+        Update: {
+          comment?: string
+          created_at?: string
+          id?: string
+          order_id?: string
+          rated_by?: string
+          rating?: number
+          rider_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ratings_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ratings_rated_by_fkey"
+            columns: ["rated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ratings_rider_id_fkey"
+            columns: ["rider_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      riders: {
+        Row: {
+          id: string
+          is_available: boolean
+          total_earnings: number
+          user_id: string
+          vehicle_type: string
+        }
+        Insert: {
+          id?: string
+          is_available?: boolean
+          total_earnings?: number
+          user_id: string
+          vehicle_type?: string
+        }
+        Update: {
+          id?: string
+          is_available?: boolean
+          total_earnings?: number
+          user_id?: string
+          vehicle_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "riders_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shops: {
+        Row: {
+          address: string
+          category: string
+          created_at: string
+          delivery_time: string
+          description: string
+          id: string
+          is_open: boolean
+          logo_url: string
+          owner_id: string
+          rating: number
+          shop_name: string
+          village: string
+        }
+        Insert: {
+          address?: string
+          category?: string
+          created_at?: string
+          delivery_time?: string
+          description?: string
+          id?: string
+          is_open?: boolean
+          logo_url?: string
+          owner_id: string
+          rating?: number
+          shop_name: string
+          village?: string
+        }
+        Update: {
+          address?: string
+          category?: string
+          created_at?: string
+          delivery_time?: string
+          description?: string
+          id?: string
+          is_open?: boolean
+          logo_url?: string
+          owner_id?: string
+          rating?: number
+          shop_name?: string
+          village?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shops_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
