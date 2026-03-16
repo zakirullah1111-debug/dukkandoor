@@ -3,25 +3,53 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 const villages = ['Chak 45', 'Chak 60', 'Chak 72', 'Moza Ali', 'Basti Lal'];
 
 const SetupProfile = () => {
   const navigate = useNavigate();
-  const { user, updateUser } = useAuth();
+  const { user, session, loading: authLoading, updateUser } = useAuth();
   const [name, setName] = useState('');
   const [village, setVillage] = useState('');
+  const [saving, setSaving] = useState(false);
 
-  if (!user) {
-    navigate('/', { replace: true });
+  if (authLoading) return null;
+  if (!session) { navigate('/', { replace: true }); return null; }
+  if (user?.name) {
+    const routes: Record<string, string> = { customer: '/home', shopkeeper: '/shopkeeper', rider: '/rider', admin: '/admin' };
+    navigate(routes[user.role] || '/home', { replace: true });
     return null;
   }
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!name.trim() || !village) return;
-    updateUser({ name: name.trim(), village });
-    const routes: Record<string, string> = { customer: '/home', shopkeeper: '/shopkeeper', rider: '/rider', admin: '/admin' };
-    navigate(routes[user.role] || '/home', { replace: true });
+    setSaving(true);
+    try {
+      await updateUser({ name: name.trim(), village });
+
+      // If rider, also create rider record
+      if (user?.role === 'rider') {
+        await (supabase as any).from('riders').insert({
+          user_id: session.user.id,
+          is_available: false,
+          vehicle_type: 'Motorcycle',
+        });
+      }
+
+      toast.success('Profile saved!');
+      if (user?.role === 'shopkeeper') {
+        navigate('/shopkeeper/setup', { replace: true });
+      } else {
+        const routes: Record<string, string> = { customer: '/home', rider: '/rider', admin: '/admin' };
+        navigate(routes[user?.role || 'customer'] || '/home', { replace: true });
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to save profile');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -59,8 +87,8 @@ const SetupProfile = () => {
           </div>
         </div>
 
-        <Button onClick={handleSubmit} disabled={!name.trim() || !village} className="w-full h-14 text-base font-display font-semibold rounded-xl mt-4">
-          Get Started
+        <Button onClick={handleSubmit} disabled={!name.trim() || !village || saving} className="w-full h-14 text-base font-display font-semibold rounded-xl mt-4">
+          {saving ? 'Saving...' : 'Get Started'}
         </Button>
       </div>
     </div>
