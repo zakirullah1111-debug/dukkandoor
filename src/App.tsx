@@ -18,10 +18,13 @@ import OrderTracking from "./pages/OrderTracking";
 import OrderHistory from "./pages/OrderHistory";
 import Categories from "./pages/Categories";
 import Profile from "./pages/Profile";
+import Favorites from "./pages/Favorites";
 import ShopkeeperDashboard from "./pages/ShopkeeperDashboard";
 import ShopkeeperProducts from "./pages/ShopkeeperProducts";
 import ShopkeeperOrders from "./pages/ShopkeeperOrders";
 import RiderDashboard from "./pages/RiderDashboard";
+import RiderProfile from "./pages/RiderProfile";
+import RiderEditProfile from "./pages/RiderEditProfile";
 import AdminDashboard from "./pages/AdminDashboard";
 import NotFound from "./pages/NotFound";
 
@@ -56,6 +59,8 @@ const AppRoutes = () => (
     <Route path="/order-tracking" element={<ProtectedRoute allowedRoles={['customer']}><OrderTracking /></ProtectedRoute>} />
     <Route path="/orders" element={<ProtectedRoute allowedRoles={['customer']}><OrderHistory /></ProtectedRoute>} />
     <Route path="/categories" element={<ProtectedRoute allowedRoles={['customer']}><Categories /></ProtectedRoute>} />
+    <Route path="/favorites" element={<ProtectedRoute allowedRoles={['customer']}><Favorites /></ProtectedRoute>} />
+    <Route path="/rider/:riderId" element={<ProtectedRoute><RiderProfile /></ProtectedRoute>} />
     <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
 
     {/* Shopkeeper Routes */}
@@ -65,6 +70,7 @@ const AppRoutes = () => (
 
     {/* Rider */}
     <Route path="/rider" element={<ProtectedRoute allowedRoles={['rider']}><RiderDashboard /></ProtectedRoute>} />
+    <Route path="/rider/edit-profile" element={<ProtectedRoute allowedRoles={['rider']}><RiderEditProfile /></ProtectedRoute>} />
 
     {/* Admin */}
     <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} />
