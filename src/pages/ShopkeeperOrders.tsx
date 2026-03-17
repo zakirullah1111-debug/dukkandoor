@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Check, X, Loader2 } from 'lucide-react';
+import { ArrowLeft, Check, X, Loader2, Flag } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -12,29 +12,27 @@ const ShopkeeperOrders = () => {
   const [loading, setLoading] = useState(true);
   const [shopId, setShopId] = useState<string | null>(null);
 
-  useEffect(() => {
+  const fetchOrders = async () => {
     if (!session?.user) return;
-    const fetch = async () => {
-      const { data: shop } = await (supabase as any).from('shops').select('id').eq('owner_id', session.user.id).maybeSingle();
-      if (!shop) return;
-      setShopId(shop.id);
+    const { data: shop } = await (supabase as any).from('shops').select('id').eq('owner_id', session.user.id).maybeSingle();
+    if (!shop) return;
+    setShopId(shop.id);
+    const { data } = await (supabase as any).from('orders')
+      .select('*, order_items(*, products(name)), profiles!orders_customer_id_fkey(name, phone)')
+      .eq('shop_id', shop.id)
+      .order('created_at', { ascending: false });
+    if (data) setOrders(data);
+    setLoading(false);
+  };
 
-      const { data } = await (supabase as any).from('orders')
-        .select('*, order_items(*, products(name)), profiles!orders_customer_id_fkey(name, phone)')
-        .eq('shop_id', shop.id)
-        .order('created_at', { ascending: false });
-      if (data) setOrders(data);
-      setLoading(false);
-    };
-    fetch();
+  useEffect(() => {
+    fetchOrders();
 
-    // Realtime
     const channel = supabase.channel('shopkeeper-orders-list')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' },
         (payload: any) => {
           if (payload.eventType === 'INSERT' && payload.new.shop_id === shopId) {
-            // Refetch to get full data with joins
-            fetch();
+            fetchOrders();
             toast('🔔 New order!');
           } else if (payload.eventType === 'UPDATE') {
             setOrders(prev => prev.map(o => o.id === payload.new.id ? { ...o, ...payload.new } : o));
@@ -50,9 +48,7 @@ const ShopkeeperOrders = () => {
       await (supabase as any).from('orders').update({ status: 'confirmed' }).eq('id', orderId);
       setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'confirmed' } : o));
       toast.success('Order accepted!');
-    } catch {
-      toast.error('Failed to accept order');
-    }
+    } catch { toast.error('Failed to accept order'); }
   };
 
   const handleCancel = async (orderId: string) => {
@@ -60,9 +56,7 @@ const ShopkeeperOrders = () => {
       await (supabase as any).from('orders').update({ status: 'cancelled' }).eq('id', orderId);
       setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'cancelled' } : o));
       toast.error('Order cancelled');
-    } catch {
-      toast.error('Failed to cancel order');
-    }
+    } catch { toast.error('Failed to cancel order'); }
   };
 
   const pending = orders.filter(o => o.status === 'placed');
@@ -94,6 +88,13 @@ const ShopkeeperOrders = () => {
                   <span className="text-[10px] font-bold bg-destructive text-destructive-foreground px-2 py-0.5 rounded-full">NEW</span>
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">📍 {order.delivery_address}</p>
+                {/* Customer Note */}
+                {order.customer_note && (
+                  <div className="bg-warning/10 rounded-lg p-2 mt-2 border border-warning/20">
+                    <p className="text-xs font-bold text-warning">📝 Customer Note</p>
+                    <p className="text-sm">{order.customer_note}</p>
+                  </div>
+                )}
                 <div className="mt-2">
                   {order.order_items?.map((i: any) => (
                     <p key={i.id} className="text-sm">{i.products?.name || 'Item'} × {i.quantity}</p>
@@ -124,6 +125,11 @@ const ShopkeeperOrders = () => {
                   <p className="font-semibold text-sm">Order #{order.id.slice(-6)}</p>
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary text-primary-foreground uppercase">{order.status.replace('_', ' ')}</span>
                 </div>
+                {order.customer_note && (
+                  <div className="bg-warning/10 rounded-lg p-2 mt-2 border border-warning/20">
+                    <p className="text-xs font-bold text-warning">📝 Note: {order.customer_note}</p>
+                  </div>
+                )}
                 <p className="font-display font-bold text-sm mt-1">Rs {Math.round(order.total_amount)}</p>
               </div>
             ))}

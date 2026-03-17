@@ -1,9 +1,16 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Package, DollarSign, ShoppingBag, ToggleLeft, ToggleRight, Plus, ChevronRight, Store, Loader2 } from 'lucide-react';
+import { Package, DollarSign, ShoppingBag, ToggleLeft, ToggleRight, Plus, ChevronRight, Store, Loader2, Clock, X } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Switch } from '@/components/ui/switch';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+
+const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+const defaultHours = days.reduce((acc, d) => ({ ...acc, [d]: { open: true, openTime: '09:00', closeTime: '21:00' } }), {} as any);
 
 const ShopkeeperDashboard = () => {
   const navigate = useNavigate();
@@ -14,21 +21,26 @@ const ShopkeeperDashboard = () => {
   const [todayEarnings, setTodayEarnings] = useState(0);
   const [productCount, setProductCount] = useState(0);
   const [toggling, setToggling] = useState(false);
+  const [hoursOpen, setHoursOpen] = useState(false);
+  const [businessHours, setBusinessHours] = useState<any>(defaultHours);
+  const [savingHours, setSavingHours] = useState(false);
+  // Daily summary
+  const [summary, setSummary] = useState<any>(null);
+  const [showSummary, setShowSummary] = useState(false);
+  // Low stock alerts
+  const [lowStockProducts, setLowStockProducts] = useState<any[]>([]);
 
   useEffect(() => {
     if (!session?.user) return;
     const fetchShop = async () => {
       const { data: shopData } = await (supabase as any).from('shops').select('*').eq('owner_id', session.user.id).maybeSingle();
-      if (!shopData) {
-        navigate('/shopkeeper/setup', { replace: true });
-        return;
-      }
+      if (!shopData) { navigate('/shopkeeper/setup', { replace: true }); return; }
       setShop(shopData);
+      if (shopData.business_hours) setBusinessHours(shopData.business_hours);
 
-      // Fetch stats
       const [ordersRes, productsRes] = await Promise.all([
         (supabase as any).from('orders').select('id, status, total_amount, created_at').eq('shop_id', shopData.id),
-        (supabase as any).from('products').select('id').eq('shop_id', shopData.id),
+        (supabase as any).from('products').select('id, name, stock_quantity, in_stock').eq('shop_id', shopData.id),
       ]);
 
       const orders = ordersRes.data || [];
@@ -37,11 +49,32 @@ const ShopkeeperDashboard = () => {
       setTodayEarnings(orders.filter((o: any) => o.status === 'delivered' && new Date(o.created_at).toDateString() === today)
         .reduce((s: number, o: any) => s + Number(o.total_amount), 0));
       setProductCount(productsRes.data?.length || 0);
+
+      // Low stock products
+      const lowStock = (productsRes.data || []).filter((p: any) => p.stock_quantity != null && p.stock_quantity <= 3 && p.stock_quantity > 0);
+      setLowStockProducts(lowStock);
+
+      // Daily summary check (show if after 8pm or next morning)
+      const todayDelivered = orders.filter((o: any) => o.status === 'delivered' && new Date(o.created_at).toDateString() === today);
+      const todayCancelled = orders.filter((o: any) => o.status === 'cancelled' && new Date(o.created_at).toDateString() === today);
+      const totalSales = todayDelivered.reduce((s: number, o: any) => s + Number(o.total_amount), 0);
+
+      const lastDismissed = localStorage.getItem(`summary_dismissed_${shopData.id}`);
+      const now = new Date();
+      if (now.getHours() >= 20 || (now.getHours() < 10 && lastDismissed !== today)) {
+        setSummary({
+          completed: todayDelivered.length,
+          cancelled: todayCancelled.length,
+          totalSales,
+          rating: shopData.rating || 0,
+        });
+        setShowSummary(true);
+      }
+
       setLoading(false);
     };
     fetchShop();
 
-    // Realtime for new orders
     const channel = supabase.channel('shopkeeper-orders')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' },
         (payload: any) => {
@@ -65,6 +98,23 @@ const ShopkeeperDashboard = () => {
     setToggling(false);
   };
 
+  const saveBusinessHours = async () => {
+    if (!shop) return;
+    setSavingHours(true);
+    try {
+      await (supabase as any).from('shops').update({ business_hours: businessHours }).eq('id', shop.id);
+      setShop({ ...shop, business_hours: businessHours });
+      toast.success('Business hours saved!');
+      setHoursOpen(false);
+    } catch { toast.error('Failed to save'); }
+    finally { setSavingHours(false); }
+  };
+
+  const dismissSummary = () => {
+    setShowSummary(false);
+    if (shop) localStorage.setItem(`summary_dismissed_${shop.id}`, new Date().toDateString());
+  };
+
   if (loading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
 
   return (
@@ -86,13 +136,46 @@ const ShopkeeperDashboard = () => {
         <button onClick={async () => { await logout(); navigate('/', { replace: true }); }} className="text-sm text-muted-foreground">Logout</button>
       </div>
 
+      {/* Daily Summary Card */}
+      {showSummary && summary && (
+        <div className="bg-primary/5 rounded-xl border border-primary/20 p-4 mb-5 relative">
+          <button onClick={dismissSummary} className="absolute top-2 right-2 p-1"><X className="w-4 h-4 text-muted-foreground" /></button>
+          <p className="font-display font-semibold text-sm mb-2">📊 Today's Summary</p>
+          <div className="text-sm space-y-1">
+            <p>✅ {summary.completed} orders completed</p>
+            <p>❌ {summary.cancelled} orders cancelled</p>
+            <p>💰 Total sales: PKR {Math.round(summary.totalSales)}</p>
+            <p>⭐ Your shop rating: {Number(summary.rating).toFixed(1)}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Low stock alerts */}
+      {lowStockProducts.length > 0 && (
+        <div className="bg-destructive/5 rounded-xl border border-destructive/20 p-3 mb-5">
+          <p className="text-xs font-bold text-destructive mb-1">⚠️ Low Stock Alerts</p>
+          {lowStockProducts.map(p => (
+            <p key={p.id} className="text-sm">📦 {p.name} — only <span className="font-bold text-destructive">{p.stock_quantity}</span> left!</p>
+          ))}
+        </div>
+      )}
+
       {/* Open/Close Toggle */}
-      <button onClick={toggleShopStatus} disabled={toggling} className="w-full bg-card rounded-xl border border-border p-4 flex items-center justify-between mb-5 min-h-[56px]">
+      <button onClick={toggleShopStatus} disabled={toggling} className="w-full bg-card rounded-xl border border-border p-4 flex items-center justify-between mb-3 min-h-[56px]">
         <span className="font-display font-semibold">Shop Status</span>
         <div className="flex items-center gap-2">
           <span className={`text-sm font-bold ${shop?.is_open ? 'text-accent' : 'text-destructive'}`}>{shop?.is_open ? 'OPEN' : 'CLOSED'}</span>
           {shop?.is_open ? <ToggleRight className="w-8 h-8 text-accent" /> : <ToggleLeft className="w-8 h-8 text-muted-foreground" />}
         </div>
+      </button>
+
+      {/* Business Hours */}
+      <button onClick={() => setHoursOpen(true)} className="w-full bg-card rounded-xl border border-border p-4 flex items-center justify-between mb-5 min-h-[52px]">
+        <div className="flex items-center gap-2">
+          <Clock className="w-5 h-5 text-muted-foreground" />
+          <span className="font-semibold text-sm">Business Hours</span>
+        </div>
+        <ChevronRight className="w-5 h-5 text-muted-foreground" />
       </button>
 
       {/* Stats */}
@@ -132,6 +215,35 @@ const ShopkeeperDashboard = () => {
           Add New Product
         </button>
       </div>
+
+      {/* Business Hours Sheet */}
+      <Sheet open={hoursOpen} onOpenChange={setHoursOpen}>
+        <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto rounded-t-2xl">
+          <SheetHeader><SheetTitle className="font-display">Business Hours</SheetTitle></SheetHeader>
+          <div className="space-y-4 mt-4 pb-6">
+            {days.map(day => (
+              <div key={day} className="flex items-center gap-3">
+                <span className="w-16 text-sm font-medium capitalize">{day.slice(0, 3)}</span>
+                <Switch checked={businessHours[day]?.open ?? true} onCheckedChange={v => setBusinessHours((prev: any) => ({ ...prev, [day]: { ...prev[day], open: v } }))} />
+                {businessHours[day]?.open !== false && (
+                  <div className="flex items-center gap-2 flex-1">
+                    <Input type="time" value={businessHours[day]?.openTime || '09:00'}
+                      onChange={e => setBusinessHours((prev: any) => ({ ...prev, [day]: { ...prev[day], openTime: e.target.value } }))}
+                      className="h-10 rounded-lg text-sm" />
+                    <span className="text-muted-foreground text-xs">to</span>
+                    <Input type="time" value={businessHours[day]?.closeTime || '21:00'}
+                      onChange={e => setBusinessHours((prev: any) => ({ ...prev, [day]: { ...prev[day], closeTime: e.target.value } }))}
+                      className="h-10 rounded-lg text-sm" />
+                  </div>
+                )}
+              </div>
+            ))}
+            <Button onClick={saveBusinessHours} disabled={savingHours} className="w-full h-12 rounded-xl font-display">
+              {savingHours ? 'Saving...' : 'Save Business Hours'}
+            </Button>
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 };
