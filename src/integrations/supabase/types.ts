@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      favorites: {
+        Row: {
+          created_at: string
+          customer_id: string
+          id: string
+          product_id: string | null
+          shop_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          customer_id: string
+          id?: string
+          product_id?: string | null
+          shop_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string
+          id?: string
+          product_id?: string | null
+          shop_id?: string | null
+        }
+        Relationships: []
+      }
       order_items: {
         Row: {
           id: string
@@ -57,11 +81,14 @@ export type Database = {
         Row: {
           created_at: string
           customer_id: string
+          customer_note: string
           delivery_address: string
           delivery_fee: number
+          delivery_photo_url: string
           id: string
           payment_method: string
           rider_id: string | null
+          rider_selected_by_customer: boolean
           shop_id: string
           status: string
           total_amount: number
@@ -69,11 +96,14 @@ export type Database = {
         Insert: {
           created_at?: string
           customer_id: string
+          customer_note?: string
           delivery_address?: string
           delivery_fee?: number
+          delivery_photo_url?: string
           id?: string
           payment_method?: string
           rider_id?: string | null
+          rider_selected_by_customer?: boolean
           shop_id: string
           status?: string
           total_amount?: number
@@ -81,11 +111,14 @@ export type Database = {
         Update: {
           created_at?: string
           customer_id?: string
+          customer_note?: string
           delivery_address?: string
           delivery_fee?: number
+          delivery_photo_url?: string
           id?: string
           payment_method?: string
           rider_id?: string | null
+          rider_selected_by_customer?: boolean
           shop_id?: string
           status?: string
           total_amount?: number
@@ -126,6 +159,7 @@ export type Database = {
           name: string
           price: number
           shop_id: string
+          stock_quantity: number | null
         }
         Insert: {
           category?: string
@@ -138,6 +172,7 @@ export type Database = {
           name: string
           price?: number
           shop_id: string
+          stock_quantity?: number | null
         }
         Update: {
           category?: string
@@ -150,6 +185,7 @@ export type Database = {
           name?: string
           price?: number
           shop_id?: string
+          stock_quantity?: number | null
         }
         Relationships: [
           {
@@ -199,6 +235,7 @@ export type Database = {
           order_id: string
           rated_by: string
           rating: number
+          review_text: string
           rider_id: string
         }
         Insert: {
@@ -208,6 +245,7 @@ export type Database = {
           order_id: string
           rated_by: string
           rating: number
+          review_text?: string
           rider_id: string
         }
         Update: {
@@ -217,6 +255,7 @@ export type Database = {
           order_id?: string
           rated_by?: string
           rating?: number
+          review_text?: string
           rider_id?: string
         }
         Relationships: [
@@ -243,24 +282,75 @@ export type Database = {
           },
         ]
       }
+      reports: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          order_id: string | null
+          reason: string
+          reported_by: string
+          reported_user_id: string | null
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string
+          id?: string
+          order_id?: string | null
+          reason?: string
+          reported_by: string
+          reported_user_id?: string | null
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          order_id?: string | null
+          reason?: string
+          reported_by?: string
+          reported_user_id?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
       riders: {
         Row: {
+          average_rating: number
+          bio: string
           id: string
           is_available: boolean
+          is_verified: boolean
+          profile_photo_url: string
+          tier: string
+          total_deliveries: number
           total_earnings: number
           user_id: string
           vehicle_type: string
         }
         Insert: {
+          average_rating?: number
+          bio?: string
           id?: string
           is_available?: boolean
+          is_verified?: boolean
+          profile_photo_url?: string
+          tier?: string
+          total_deliveries?: number
           total_earnings?: number
           user_id: string
           vehicle_type?: string
         }
         Update: {
+          average_rating?: number
+          bio?: string
           id?: string
           is_available?: boolean
+          is_verified?: boolean
+          profile_photo_url?: string
+          tier?: string
+          total_deliveries?: number
           total_earnings?: number
           user_id?: string
           vehicle_type?: string
@@ -278,6 +368,7 @@ export type Database = {
       shops: {
         Row: {
           address: string
+          business_hours: Json | null
           category: string
           created_at: string
           delivery_time: string
@@ -292,6 +383,7 @@ export type Database = {
         }
         Insert: {
           address?: string
+          business_hours?: Json | null
           category?: string
           created_at?: string
           delivery_time?: string
@@ -306,6 +398,7 @@ export type Database = {
         }
         Update: {
           address?: string
+          business_hours?: Json | null
           category?: string
           created_at?: string
           delivery_time?: string
