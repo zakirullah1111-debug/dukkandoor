@@ -25,6 +25,7 @@ export interface Shop {
   created_at: string;
   rating?: number;
   delivery_time?: string;
+  business_hours?: any;
 }
 
 export interface Product {
@@ -38,6 +39,7 @@ export interface Product {
   image_url: string;
   in_stock: boolean;
   created_at: string;
+  stock_quantity?: number | null;
 }
 
 export interface Order {

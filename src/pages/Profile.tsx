@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { LogOut, Phone, MapPin } from 'lucide-react';
+import { LogOut, Phone, MapPin, UserCircle } from 'lucide-react';
 import MobileLayout from '@/components/MobileLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';

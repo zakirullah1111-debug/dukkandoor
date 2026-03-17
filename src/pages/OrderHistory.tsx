@@ -3,7 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { RotateCcw, Loader2 } from 'lucide-react';
 import MobileLayout from '@/components/MobileLayout';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCart } from '@/contexts/CartContext';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 const statusColors: Record<string, string> = {
   placed: 'bg-warning text-warning-foreground',
@@ -16,14 +18,16 @@ const statusColors: Record<string, string> = {
 const OrderHistory = () => {
   const navigate = useNavigate();
   const { session } = useAuth();
+  const { addItem, clearCart } = useCart();
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [reordering, setReordering] = useState<string | null>(null);
 
   useEffect(() => {
     if (!session?.user) return;
     const fetchOrders = async () => {
       const { data } = await (supabase as any).from('orders')
-        .select('*, shops(shop_name), order_items(id)')
+        .select('*, shops(shop_name), order_items(id, product_id, quantity)')
         .eq('customer_id', session.user.id)
         .order('created_at', { ascending: false });
       if (data) setOrders(data);
@@ -31,6 +35,34 @@ const OrderHistory = () => {
     };
     fetchOrders();
   }, [session]);
+
+  const handleReorder = async (order: any) => {
+    setReordering(order.id);
+    try {
+      const productIds = order.order_items?.map((i: any) => i.product_id) || [];
+      if (productIds.length === 0) { toast.error('No items to reorder'); return; }
+
+      const { data: products } = await (supabase as any).from('products').select('*').in('id', productIds);
+      if (!products) { toast.error('Failed to fetch products'); return; }
+
+      clearCart();
+      let skipped = 0;
+      for (const item of order.order_items) {
+        const product = products.find((p: any) => p.id === item.product_id);
+        if (!product || !product.in_stock) { skipped++; continue; }
+        for (let q = 0; q < item.quantity; q++) {
+          addItem(product, order.shop_id);
+        }
+      }
+
+      if (skipped > 0) {
+        toast.info(`${skipped} item${skipped > 1 ? 's were' : ' was'} unavailable and skipped`);
+      }
+      toast.success('Items added to cart!');
+      navigate('/cart');
+    } catch { toast.error('Failed to reorder'); }
+    finally { setReordering(null); }
+  };
 
   return (
     <MobileLayout>
@@ -66,8 +98,12 @@ const OrderHistory = () => {
                 <div className="flex items-center justify-between mt-3 pt-3 border-t border-border">
                   <span className="font-display font-bold">Rs {Math.round(order.total_amount)}</span>
                   {order.status === 'delivered' && (
-                    <span className="text-xs text-primary font-medium flex items-center gap-1">
-                      <RotateCcw className="w-3 h-3" /> Reorder
+                    <span
+                      onClick={e => { e.stopPropagation(); handleReorder(order); }}
+                      className="text-xs text-primary font-medium flex items-center gap-1"
+                    >
+                      {reordering === order.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <RotateCcw className="w-3 h-3" />}
+                      Reorder
                     </span>
                   )}
                 </div>

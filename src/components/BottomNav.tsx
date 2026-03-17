@@ -1,4 +1,4 @@
-import { Home, Grid3X3, ShoppingCart, ClipboardList, UserCircle } from 'lucide-react';
+import { Home, Grid3X3, ShoppingCart, ClipboardList, Heart } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useCart } from '@/contexts/CartContext';
 
@@ -7,7 +7,7 @@ const tabs = [
   { path: '/categories', label: 'Categories', icon: Grid3X3 },
   { path: '/cart', label: 'Cart', icon: ShoppingCart },
   { path: '/orders', label: 'Orders', icon: ClipboardList },
-  { path: '/profile', label: 'Profile', icon: UserCircle },
+  { path: '/favorites', label: 'Favorites', icon: Heart },
 ];
 
 const BottomNav = () => {
