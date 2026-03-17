@@ -25,6 +25,7 @@ export interface Shop {
   created_at: string;
   rating?: number;
   delivery_time?: string;
+  business_hours?: any;
 }
 
 export interface Product {
