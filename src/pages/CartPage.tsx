@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Minus, Plus, Trash2, MapPin, Locate, Loader2 } from 'lucide-react';
+import { ArrowLeft, Minus, Plus, Trash2, MapPin, Locate, Loader2, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { useCart } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -13,6 +14,7 @@ const CartPage = () => {
   const { items, updateQuantity, removeItem, clearCart, subtotal, deliveryFee, total, shopId } = useCart();
   const { user, session } = useAuth();
   const [address, setAddress] = useState(user?.address || '');
+  const [customerNote, setCustomerNote] = useState('');
   const [placing, setPlacing] = useState(false);
   const [locating, setLocating] = useState(false);
   const [shopName, setShopName] = useState('');
@@ -59,6 +61,7 @@ const CartPage = () => {
         delivery_fee: deliveryFee,
         delivery_address: address.trim(),
         payment_method: 'cash_on_delivery',
+        customer_note: customerNote.trim(),
       }).select().single();
 
       if (orderErr) throw orderErr;
@@ -133,7 +136,7 @@ const CartPage = () => {
         </div>
 
         {/* Delivery Address */}
-        <div className="mb-6">
+        <div className="mb-4">
           <label className="text-sm font-medium mb-1.5 block">Delivery Address</label>
           <div className="relative">
             <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
@@ -152,6 +155,21 @@ const CartPage = () => {
             {locating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Locate className="w-4 h-4" />}
             {locating ? 'Detecting location...' : 'Use My Current Location'}
           </button>
+        </div>
+
+        {/* Customer Note */}
+        <div className="mb-6">
+          <label className="text-sm font-medium mb-1.5 flex items-center gap-1.5">
+            <MessageSquare className="w-4 h-4 text-muted-foreground" />
+            Add a note for the shop (optional)
+          </label>
+          <Textarea
+            placeholder="e.g. Please add extra sugar, no onions..."
+            value={customerNote}
+            onChange={e => setCustomerNote(e.target.value)}
+            className="rounded-xl text-sm"
+            maxLength={500}
+          />
         </div>
 
         {/* Price Breakdown */}

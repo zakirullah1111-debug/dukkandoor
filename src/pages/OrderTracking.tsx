@@ -1,10 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Phone, Package, CheckCircle2, Truck, MapPin, Star, Loader2 } from 'lucide-react';
+import { ArrowLeft, Phone, Package, CheckCircle2, Truck, MapPin, Star, Loader2, Image as ImageIcon, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import RiderSelectionModal from '@/components/RiderSelectionModal';
 
 const steps = [
   { key: 'placed', label: 'Order Placed', icon: Package },
@@ -26,6 +28,11 @@ const OrderTracking = () => {
   const [ratingComment, setRatingComment] = useState('');
   const [submittingRating, setSubmittingRating] = useState(false);
   const [hasRated, setHasRated] = useState(false);
+  const [showRiderSelection, setShowRiderSelection] = useState(false);
+  // Cancellation
+  const [cancelCountdown, setCancelCountdown] = useState<number | null>(null);
+  const cancelTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const [cancelling, setCancelling] = useState(false);
 
   useEffect(() => {
     if (!orderId) { setLoading(false); return; }
@@ -44,12 +51,22 @@ const OrderTracking = () => {
           if (existingRating) setHasRated(true);
           else setShowRating(true);
         }
+        if (data.status === 'confirmed' && !data.rider_id) {
+          setShowRiderSelection(true);
+        }
+        // Cancellation window (2 minutes)
+        if (data.status === 'placed') {
+          const placed = new Date(data.created_at).getTime();
+          const remaining = Math.max(0, 120 - Math.floor((Date.now() - placed) / 1000));
+          if (remaining > 0) {
+            setCancelCountdown(remaining);
+          }
+        }
       }
       setLoading(false);
     };
     fetchOrder();
 
-    // Realtime subscription
     const channel = supabase.channel(`order-track-${orderId}`)
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders', filter: `id=eq.${orderId}` },
         async (payload: any) => {
@@ -58,22 +75,53 @@ const OrderTracking = () => {
           if (updated.status === 'delivered') {
             toast.success('Your order has been delivered! 🎉');
             setShowRating(true);
+            setCancelCountdown(null);
           } else if (updated.status === 'confirmed') {
             toast.success('Your order has been confirmed by the shop!');
+            if (!updated.rider_id) setShowRiderSelection(true);
           } else if (updated.status === 'picked_up') {
             toast.success('Rider has picked up your order!');
+            setShowRiderSelection(false);
           } else if (updated.status === 'cancelled') {
             toast.error('Your order has been cancelled');
+            setCancelCountdown(null);
           }
           if (updated.rider_id && !rider) {
             const { data: rp } = await (supabase as any).from('profiles').select('*').eq('id', updated.rider_id).single();
             if (rp) setRider(rp);
+            setShowRiderSelection(false);
           }
         }
       ).subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    return () => { supabase.removeChannel(channel); if (cancelTimerRef.current) clearInterval(cancelTimerRef.current); };
   }, [orderId]);
+
+  // Cancel countdown timer
+  useEffect(() => {
+    if (cancelCountdown === null || cancelCountdown <= 0) return;
+    cancelTimerRef.current = setInterval(() => {
+      setCancelCountdown(prev => {
+        if (prev === null || prev <= 1) {
+          if (cancelTimerRef.current) clearInterval(cancelTimerRef.current);
+          return null;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => { if (cancelTimerRef.current) clearInterval(cancelTimerRef.current); };
+  }, [cancelCountdown !== null]);
+
+  const handleCancel = async () => {
+    if (!order) return;
+    setCancelling(true);
+    try {
+      await (supabase as any).from('orders').update({ status: 'cancelled' }).eq('id', order.id);
+      toast.success('Order cancelled');
+      setCancelCountdown(null);
+    } catch { toast.error('Failed to cancel'); }
+    finally { setCancelling(false); }
+  };
 
   const submitRating = async () => {
     if (rating === 0 || !order?.rider_id || !session?.user) return;
@@ -85,19 +133,16 @@ const OrderTracking = () => {
         rider_id: order.rider_id,
         rating,
         comment: ratingComment,
+        review_text: ratingComment,
       });
       toast.success('Thank you for your rating!');
       setShowRating(false);
       setHasRated(true);
-    } catch {
-      toast.error('Failed to submit rating');
-    } finally {
-      setSubmittingRating(false);
-    }
+    } catch { toast.error('Failed to submit rating'); }
+    finally { setSubmittingRating(false); }
   };
 
   if (loading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
-
   if (!order) return (
     <div className="min-h-screen bg-background max-w-lg mx-auto flex flex-col items-center justify-center px-6">
       <p className="text-muted-foreground mb-4">Order not found</p>
@@ -140,18 +185,59 @@ const OrderTracking = () => {
         </div>
       )}
 
+      {/* Cancellation Window */}
+      {order.status === 'placed' && cancelCountdown !== null && cancelCountdown > 0 && (
+        <div className="bg-destructive/5 rounded-xl border border-destructive/20 p-4 mb-5">
+          <p className="text-sm text-muted-foreground mb-2">
+            You can cancel within <span className="font-bold text-destructive">{Math.floor(cancelCountdown / 60)}:{String(cancelCountdown % 60).padStart(2, '0')}</span>
+          </p>
+          <Button onClick={handleCancel} disabled={cancelling} variant="destructive" className="w-full h-10 rounded-xl text-sm">
+            {cancelling ? 'Cancelling...' : 'Cancel Order'}
+          </Button>
+        </div>
+      )}
+      {order.status === 'placed' && cancelCountdown === null && (
+        <p className="text-xs text-muted-foreground text-center mb-5">Order can no longer be cancelled</p>
+      )}
+      {order.status === 'confirmed' && cancelCountdown !== null && cancelCountdown > 0 && (
+        <div className="bg-warning/10 rounded-xl border border-warning/20 p-4 mb-5">
+          <p className="text-sm text-muted-foreground mb-2">
+            ⚠️ The shopkeeper has started preparing. Cancel anyway?
+          </p>
+          <Button onClick={handleCancel} disabled={cancelling} variant="destructive" size="sm" className="rounded-xl">
+            {cancelling ? 'Cancelling...' : 'Cancel Anyway'}
+          </Button>
+        </div>
+      )}
+
+      {/* Customer note */}
+      {order.customer_note && (
+        <div className="bg-warning/10 rounded-xl border border-warning/20 p-3 mb-5">
+          <p className="text-xs font-bold text-warning mb-1">📝 Your Note</p>
+          <p className="text-sm">{order.customer_note}</p>
+        </div>
+      )}
+
       {rider && (
-        <div className="bg-card rounded-xl border border-border p-4 mb-5">
+        <button onClick={() => navigate(`/rider/${rider.id}`)} className="w-full bg-card rounded-xl border border-border p-4 mb-5 text-left">
           <p className="text-xs text-muted-foreground mb-2">Your Rider</p>
           <div className="flex items-center justify-between">
             <div>
               <p className="font-display font-semibold">{rider.name}</p>
               <p className="text-sm text-muted-foreground">{rider.phone}</p>
             </div>
-            <a href={`tel:${rider.phone}`} className="w-12 h-12 rounded-xl bg-accent text-accent-foreground flex items-center justify-center">
+            <a href={`tel:${rider.phone}`} onClick={e => e.stopPropagation()} className="w-12 h-12 rounded-xl bg-accent text-accent-foreground flex items-center justify-center">
               <Phone className="w-5 h-5" />
             </a>
           </div>
+        </button>
+      )}
+
+      {/* Delivery Photo */}
+      {order.delivery_photo_url && (
+        <div className="bg-card rounded-xl border border-border p-4 mb-5">
+          <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1"><ImageIcon className="w-3.5 h-3.5" /> Delivery Photo</p>
+          <img src={order.delivery_photo_url} alt="Delivery proof" className="w-full rounded-lg" />
         </div>
       )}
 
@@ -183,7 +269,7 @@ const OrderTracking = () => {
           </div>
           <input
             type="text"
-            placeholder="Add a comment (optional)"
+            placeholder="Add a review (optional)"
             value={ratingComment}
             onChange={e => setRatingComment(e.target.value)}
             className="w-full h-10 px-3 rounded-lg border border-border text-sm mb-3"
@@ -193,6 +279,13 @@ const OrderTracking = () => {
           </Button>
         </div>
       )}
+
+      {/* Rider Selection Modal */}
+      <Dialog open={showRiderSelection} onOpenChange={setShowRiderSelection}>
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+          <RiderSelectionModal orderId={orderId} onComplete={() => setShowRiderSelection(false)} />
+        </DialogContent>
+      </Dialog>
 
       <Button onClick={() => navigate('/home')} variant="outline" className="w-full h-12 rounded-xl font-display">
         Back to Home
