@@ -38,6 +38,58 @@ export type Database = {
         }
         Relationships: []
       }
+      messages: {
+        Row: {
+          created_at: string
+          id: string
+          is_read: boolean
+          message_text: string
+          order_id: string
+          receiver_id: string
+          sender_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message_text: string
+          order_id: string
+          receiver_id: string
+          sender_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message_text?: string
+          order_id?: string
+          receiver_id?: string
+          sender_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_receiver_id_fkey"
+            columns: ["receiver_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       order_items: {
         Row: {
           id: string
@@ -84,12 +136,16 @@ export type Database = {
           customer_note: string
           delivery_address: string
           delivery_fee: number
+          delivery_lat: number | null
+          delivery_lng: number | null
           delivery_photo_url: string
           id: string
           payment_method: string
           rider_id: string | null
           rider_selected_by_customer: boolean
           shop_id: string
+          shop_lat: number | null
+          shop_lng: number | null
           status: string
           total_amount: number
         }
@@ -99,12 +155,16 @@ export type Database = {
           customer_note?: string
           delivery_address?: string
           delivery_fee?: number
+          delivery_lat?: number | null
+          delivery_lng?: number | null
           delivery_photo_url?: string
           id?: string
           payment_method?: string
           rider_id?: string | null
           rider_selected_by_customer?: boolean
           shop_id: string
+          shop_lat?: number | null
+          shop_lng?: number | null
           status?: string
           total_amount?: number
         }
@@ -114,12 +174,16 @@ export type Database = {
           customer_note?: string
           delivery_address?: string
           delivery_fee?: number
+          delivery_lat?: number | null
+          delivery_lng?: number | null
           delivery_photo_url?: string
           id?: string
           payment_method?: string
           rider_id?: string | null
           rider_selected_by_customer?: boolean
           shop_id?: string
+          shop_lat?: number | null
+          shop_lng?: number | null
           status?: string
           total_amount?: number
         }
@@ -204,6 +268,7 @@ export type Database = {
           id: string
           name: string
           phone: string
+          preferred_language: string
           role: string
           village: string
         }
@@ -213,6 +278,7 @@ export type Database = {
           id: string
           name?: string
           phone?: string
+          preferred_language?: string
           role?: string
           village?: string
         }
@@ -222,6 +288,7 @@ export type Database = {
           id?: string
           name?: string
           phone?: string
+          preferred_language?: string
           role?: string
           village?: string
         }
@@ -319,9 +386,12 @@ export type Database = {
         Row: {
           average_rating: number
           bio: string
+          current_lat: number | null
+          current_lng: number | null
           id: string
           is_available: boolean
           is_verified: boolean
+          location_updated_at: string | null
           profile_photo_url: string
           tier: string
           total_deliveries: number
@@ -332,9 +402,12 @@ export type Database = {
         Insert: {
           average_rating?: number
           bio?: string
+          current_lat?: number | null
+          current_lng?: number | null
           id?: string
           is_available?: boolean
           is_verified?: boolean
+          location_updated_at?: string | null
           profile_photo_url?: string
           tier?: string
           total_deliveries?: number
@@ -345,9 +418,12 @@ export type Database = {
         Update: {
           average_rating?: number
           bio?: string
+          current_lat?: number | null
+          current_lng?: number | null
           id?: string
           is_available?: boolean
           is_verified?: boolean
+          location_updated_at?: string | null
           profile_photo_url?: string
           tier?: string
           total_deliveries?: number
