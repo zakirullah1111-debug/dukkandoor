@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=Noto+Nastaliq+Urdu:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -106,4 +106,18 @@
   .safe-bottom {
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.2); opacity: 0.8; }
+}
+
+/* RTL adjustments */
+[dir="rtl"] .font-display {
+  font-family: 'Noto Nastaliq Urdu', 'Outfit', sans-serif;
+}
+[dir="rtl"] .font-body,
+[dir="rtl"] body {
+  font-family: 'Noto Nastaliq Urdu', 'Inter', sans-serif;
 }
