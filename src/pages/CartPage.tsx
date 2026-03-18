@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useCart } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -13,6 +14,7 @@ const CartPage = () => {
   const navigate = useNavigate();
   const { items, updateQuantity, removeItem, clearCart, subtotal, deliveryFee, total, shopId } = useCart();
   const { user, session } = useAuth();
+  const { t } = useLanguage();
   const [address, setAddress] = useState(user?.address || '');
   const [customerNote, setCustomerNote] = useState('');
   const [placing, setPlacing] = useState(false);
@@ -27,11 +29,18 @@ const CartPage = () => {
     }
   }, [shopId]);
 
+  // Geocode address for order coordinates
+  const geocodeAddress = async (addr: string): Promise<{ lat: number; lng: number } | null> => {
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addr)}&limit=1`);
+      const data = await res.json();
+      if (data?.[0]) return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+    } catch {}
+    return null;
+  };
+
   const getCurrentLocation = async () => {
-    if (!navigator.geolocation) {
-      toast.error('Geolocation not supported by your browser');
-      return;
-    }
+    if (!navigator.geolocation) { toast.error('Geolocation not supported'); return; }
     setLocating(true);
     try {
       const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
@@ -41,18 +50,25 @@ const CartPage = () => {
       const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
       const data = await res.json();
       setAddress(data.display_name || `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`);
-      toast.success('Location detected!');
-    } catch {
-      toast.error('Please enable location access or enter address manually');
-    } finally {
-      setLocating(false);
-    }
+      toast.success(t('success'));
+    } catch { toast.error(t('error_retry')); }
+    finally { setLocating(false); }
   };
 
   const handlePlaceOrder = async () => {
     if (!address.trim() || !session?.user) return;
     setPlacing(true);
     try {
+      // Geocode delivery and shop addresses
+      const [deliveryCoords, shopData] = await Promise.all([
+        geocodeAddress(address.trim()),
+        shopId ? (supabase as any).from('shops').select('address').eq('id', shopId).single() : null,
+      ]);
+      let shopCoords = null;
+      if (shopData?.data?.address) {
+        shopCoords = await geocodeAddress(shopData.data.address);
+      }
+
       const { data: order, error: orderErr } = await (supabase as any).from('orders').insert({
         customer_id: session.user.id,
         shop_id: shopId,
@@ -62,6 +78,10 @@ const CartPage = () => {
         delivery_address: address.trim(),
         payment_method: 'cash_on_delivery',
         customer_note: customerNote.trim(),
+        delivery_lat: deliveryCoords?.lat || null,
+        delivery_lng: deliveryCoords?.lng || null,
+        shop_lat: shopCoords?.lat || null,
+        shop_lng: shopCoords?.lng || null,
       }).select().single();
 
       if (orderErr) throw orderErr;
@@ -72,27 +92,24 @@ const CartPage = () => {
         quantity: i.quantity,
         price_at_order: Math.round(i.product.price * (1 - i.product.discount_percent / 100)),
       }));
-
       const { error: itemsErr } = await (supabase as any).from('order_items').insert(orderItems);
       if (itemsErr) throw itemsErr;
 
       clearCart();
-      toast.success('Order placed successfully!');
+      toast.success(t('success'));
       navigate('/order-tracking', { state: { orderId: order.id } });
     } catch (err: any) {
-      toast.error(err.message || 'Failed to place order');
-    } finally {
-      setPlacing(false);
-    }
+      toast.error(err.message || t('error_retry'));
+    } finally { setPlacing(false); }
   };
 
   if (items.length === 0) {
     return (
       <div className="min-h-screen bg-background max-w-lg mx-auto flex flex-col items-center justify-center px-6">
         <div className="text-6xl mb-4">🛒</div>
-        <h2 className="font-display text-xl font-bold mb-2">Your cart is empty</h2>
-        <p className="text-muted-foreground text-center mb-6">Add items from a shop to get started</p>
-        <Button onClick={() => navigate('/home')} className="h-12 rounded-xl font-display">Browse Shops</Button>
+        <h2 className="font-display text-xl font-bold mb-2">{t('cart_empty')}</h2>
+        <p className="text-muted-foreground text-center mb-6">{t('cart_empty_desc')}</p>
+        <Button onClick={() => navigate('/home')} className="h-12 rounded-xl font-display">{t('browse_shops')}</Button>
       </div>
     );
   }
@@ -101,13 +118,13 @@ const CartPage = () => {
     <div className="min-h-screen bg-background max-w-lg mx-auto">
       <div className="px-4 pt-4">
         <div className="flex items-center gap-3 mb-6">
-          <button onClick={() => navigate(-1)} className="min-h-[44px] min-w-[44px] flex items-center justify-center -ml-2">
+          <button onClick={() => navigate(-1)} className="min-h-[44px] min-w-[44px] flex items-center justify-center -ms-2">
             <ArrowLeft className="w-6 h-6" />
           </button>
-          <h1 className="font-display text-xl font-bold">Your Cart</h1>
+          <h1 className="font-display text-xl font-bold">{t('your_cart')}</h1>
         </div>
 
-        {shopName && <p className="text-sm text-muted-foreground mb-4">From {shopName}</p>}
+        {shopName && <p className="text-sm text-muted-foreground mb-4">{t('from')} {shopName}</p>}
 
         <div className="space-y-3 mb-6">
           {items.map(item => {
@@ -119,81 +136,44 @@ const CartPage = () => {
                   <p className="font-display font-bold text-sm mt-0.5">Rs {Math.round(discounted * item.quantity)}</p>
                 </div>
                 <div className="flex items-center gap-1">
-                  <button onClick={() => updateQuantity(item.product.id, item.quantity - 1)} className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center">
-                    <Minus className="w-4 h-4" />
-                  </button>
+                  <button onClick={() => updateQuantity(item.product.id, item.quantity - 1)} className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center"><Minus className="w-4 h-4" /></button>
                   <span className="w-8 text-center font-bold text-sm">{item.quantity}</span>
-                  <button onClick={() => updateQuantity(item.product.id, item.quantity + 1)} className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center">
-                    <Plus className="w-4 h-4" />
-                  </button>
-                  <button onClick={() => removeItem(item.product.id)} className="w-9 h-9 rounded-lg flex items-center justify-center text-destructive ml-1">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  <button onClick={() => updateQuantity(item.product.id, item.quantity + 1)} className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center"><Plus className="w-4 h-4" /></button>
+                  <button onClick={() => removeItem(item.product.id)} className="w-9 h-9 rounded-lg flex items-center justify-center text-destructive ms-1"><Trash2 className="w-4 h-4" /></button>
                 </div>
               </div>
             );
           })}
         </div>
 
-        {/* Delivery Address */}
         <div className="mb-4">
-          <label className="text-sm font-medium mb-1.5 block">Delivery Address</label>
+          <label className="text-sm font-medium mb-1.5 block">{t('delivery_address')}</label>
           <div className="relative">
-            <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-            <Input
-              placeholder="Enter your full address"
-              value={address}
-              onChange={e => setAddress(e.target.value)}
-              className="h-14 pl-10 pr-12 rounded-xl text-base"
-            />
+            <MapPin className="absolute start-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+            <Input placeholder={t('enter_address')} value={address} onChange={e => setAddress(e.target.value)} className="h-14 ps-10 pe-12 rounded-xl text-base" />
           </div>
-          <button
-            onClick={getCurrentLocation}
-            disabled={locating}
-            className="mt-2 flex items-center gap-2 text-sm text-primary font-medium min-h-[40px] active:scale-95 transition-transform"
-          >
+          <button onClick={getCurrentLocation} disabled={locating} className="mt-2 flex items-center gap-2 text-sm text-primary font-medium min-h-[40px] active:scale-95 transition-transform">
             {locating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Locate className="w-4 h-4" />}
-            {locating ? 'Detecting location...' : 'Use My Current Location'}
+            {locating ? t('detecting_location') : t('use_current_location')}
           </button>
         </div>
 
-        {/* Customer Note */}
         <div className="mb-6">
           <label className="text-sm font-medium mb-1.5 flex items-center gap-1.5">
             <MessageSquare className="w-4 h-4 text-muted-foreground" />
-            Add a note for the shop (optional)
+            {t('add_note_shop')}
           </label>
-          <Textarea
-            placeholder="e.g. Please add extra sugar, no onions..."
-            value={customerNote}
-            onChange={e => setCustomerNote(e.target.value)}
-            className="rounded-xl text-sm"
-            maxLength={500}
-          />
+          <Textarea placeholder={t('note_placeholder')} value={customerNote} onChange={e => setCustomerNote(e.target.value)} className="rounded-xl text-sm" maxLength={500} />
         </div>
 
-        {/* Price Breakdown */}
         <div className="bg-card rounded-xl border border-border p-4 space-y-2 mb-6">
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Subtotal</span>
-            <span className="font-semibold">Rs {Math.round(subtotal)}</span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Delivery Fee</span>
-            <span className="font-semibold">Rs {deliveryFee}</span>
-          </div>
-          <div className="border-t border-border pt-2 flex justify-between">
-            <span className="font-display font-bold">Total</span>
-            <span className="font-display font-bold text-lg">Rs {Math.round(total)}</span>
-          </div>
+          <div className="flex justify-between text-sm"><span className="text-muted-foreground">{t('subtotal')}</span><span className="font-semibold">Rs {Math.round(subtotal)}</span></div>
+          <div className="flex justify-between text-sm"><span className="text-muted-foreground">{t('delivery_fee')}</span><span className="font-semibold">Rs {deliveryFee}</span></div>
+          <div className="border-t border-border pt-2 flex justify-between"><span className="font-display font-bold">{t('total')}</span><span className="font-display font-bold text-lg">Rs {Math.round(total)}</span></div>
         </div>
 
-        <Button
-          onClick={handlePlaceOrder}
-          disabled={!address.trim() || placing}
-          className="w-full h-14 text-base font-display font-semibold rounded-xl mb-6"
-        >
-          {placing ? <><Loader2 className="w-5 h-5 animate-spin mr-2" /> Placing Order...</> : 'Place Order (Cash on Delivery)'}
+        <Button onClick={handlePlaceOrder} disabled={!address.trim() || placing} className="w-full h-14 text-base font-display font-semibold rounded-xl mb-6">
+          {placing ? <><Loader2 className="w-5 h-5 animate-spin me-2" /> {t('placing_order')}</> : t('place_order_cod')}
         </Button>
       </div>
     </div>
