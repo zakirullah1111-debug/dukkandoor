@@ -311,5 +311,4 @@ const FarmerProfileTab = ({ farmerProfile, setFarmerProfile, session }: { farmer
   );
 };
 
-import { toast } from 'sonner';
 export default FarmerDashboard;
