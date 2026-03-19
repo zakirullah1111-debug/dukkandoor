@@ -92,7 +92,7 @@ const FarmerDashboard = () => {
 
             <button
               onClick={() => navigate('/farmer/shop-order')}
-              className="w-full bg-blue-50 dark:bg-blue-950/20 rounded-2xl p-5 text-start active:scale-[0.98] transition-transform border-2 border-blue-200 dark:border-blue-800 min-h-[90px]"
+              className="w-full bg-secondary/50 rounded-2xl p-5 text-start active:scale-[0.98] transition-transform border-2 border-secondary min-h-[90px]"
             >
               <span className="text-3xl">🏪</span>
               <h3 className="font-display text-lg font-bold mt-2">{t('order_from_shop')}</h3>
