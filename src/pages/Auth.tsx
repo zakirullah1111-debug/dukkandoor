@@ -39,7 +39,7 @@ const Auth = () => {
   };
 
   const roleLabels: Record<string, string> = {
-    customer: t('customer'), shopkeeper: t('shopkeeper'), rider: t('delivery_rider'),
+    customer: t('customer'), shopkeeper: t('shopkeeper'), rider: t('delivery_rider'), farmer: t('farmer'), hotel: t('hotel_owner'),
   };
 
   return (
