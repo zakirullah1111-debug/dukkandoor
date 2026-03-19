@@ -28,6 +28,19 @@ import RiderProfile from "./pages/RiderProfile";
 import RiderEditProfile from "./pages/RiderEditProfile";
 import AdminDashboard from "./pages/AdminDashboard";
 import NotFound from "./pages/NotFound";
+// Farmer
+import FarmerSetup from "./pages/FarmerSetup";
+import FarmerDashboard from "./pages/FarmerDashboard";
+import FarmerHomePickup from "./pages/FarmerHomePickup";
+import FarmerShopOrder from "./pages/FarmerShopOrder";
+import FarmerFoodOrder from "./pages/FarmerFoodOrder";
+import FarmerFoodCheckout from "./pages/FarmerFoodCheckout";
+// Hotel
+import HotelSetup from "./pages/HotelSetup";
+import HotelDashboard from "./pages/HotelDashboard";
+import HotelMenu from "./pages/HotelMenu";
+import HotelOrders from "./pages/HotelOrders";
+import HotelPage from "./pages/HotelPage";
 
 const queryClient = new QueryClient();
 
@@ -55,9 +68,9 @@ const AppRoutes = () => (
 
     {/* Customer */}
     <Route path="/home" element={<ProtectedRoute allowedRoles={['customer']}><CustomerHome /></ProtectedRoute>} />
-    <Route path="/shop/:shopId" element={<ProtectedRoute allowedRoles={['customer']}><ShopPage /></ProtectedRoute>} />
+    <Route path="/shop/:shopId" element={<ProtectedRoute allowedRoles={['customer', 'farmer']}><ShopPage /></ProtectedRoute>} />
     <Route path="/cart" element={<ProtectedRoute allowedRoles={['customer']}><CartPage /></ProtectedRoute>} />
-    <Route path="/order-tracking" element={<ProtectedRoute allowedRoles={['customer']}><OrderTracking /></ProtectedRoute>} />
+    <Route path="/order-tracking" element={<ProtectedRoute><OrderTracking /></ProtectedRoute>} />
     <Route path="/orders" element={<ProtectedRoute allowedRoles={['customer']}><OrderHistory /></ProtectedRoute>} />
     <Route path="/categories" element={<ProtectedRoute allowedRoles={['customer']}><Categories /></ProtectedRoute>} />
     <Route path="/favorites" element={<ProtectedRoute allowedRoles={['customer']}><Favorites /></ProtectedRoute>} />
@@ -75,6 +88,21 @@ const AppRoutes = () => (
 
     {/* Admin */}
     <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} />
+
+    {/* Farmer */}
+    <Route path="/farmer/setup" element={<FarmerSetup />} />
+    <Route path="/farmer" element={<ProtectedRoute allowedRoles={['farmer']}><FarmerDashboard /></ProtectedRoute>} />
+    <Route path="/farmer/home-pickup" element={<ProtectedRoute allowedRoles={['farmer']}><FarmerHomePickup /></ProtectedRoute>} />
+    <Route path="/farmer/shop-order" element={<ProtectedRoute allowedRoles={['farmer']}><FarmerShopOrder /></ProtectedRoute>} />
+    <Route path="/farmer/food-order" element={<ProtectedRoute allowedRoles={['farmer']}><FarmerFoodOrder /></ProtectedRoute>} />
+    <Route path="/farmer/food-checkout" element={<ProtectedRoute allowedRoles={['farmer']}><FarmerFoodCheckout /></ProtectedRoute>} />
+
+    {/* Hotel */}
+    <Route path="/hotel/setup" element={<HotelSetup />} />
+    <Route path="/hotel" element={<ProtectedRoute allowedRoles={['hotel']}><HotelDashboard /></ProtectedRoute>} />
+    <Route path="/hotel/menu" element={<ProtectedRoute allowedRoles={['hotel']}><HotelMenu /></ProtectedRoute>} />
+    <Route path="/hotel/orders" element={<ProtectedRoute allowedRoles={['hotel']}><HotelOrders /></ProtectedRoute>} />
+    <Route path="/hotel/:hotelId" element={<ProtectedRoute><HotelPage /></ProtectedRoute>} />
 
     <Route path="*" element={<NotFound />} />
   </Routes>

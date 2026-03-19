@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { DoorOpen, ShoppingBag, Bike } from 'lucide-react';
+import { DoorOpen, ShoppingBag, Bike, Wheat, UtensilsCrossed } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -16,7 +16,7 @@ const Welcome = () => {
     if (loading) return;
     if (!isAuthenticated) return;
     if (!user?.name) { navigate('/setup', { replace: true }); return; }
-    const routes: Record<string, string> = { customer: '/home', shopkeeper: '/shopkeeper', rider: '/rider', admin: '/admin' };
+    const routes: Record<string, string> = { customer: '/home', shopkeeper: '/shopkeeper', rider: '/rider', admin: '/admin', farmer: '/farmer', hotel: '/hotel' };
     navigate(routes[user.role] || '/home', { replace: true });
   }, [loading, isAuthenticated, user, navigate]);
 
@@ -45,6 +45,14 @@ const Welcome = () => {
           <Button onClick={() => navigate('/auth', { state: { role: 'shopkeeper' } })} variant="outline" className="w-full h-14 text-base font-display font-semibold rounded-xl gap-3 border-2" size="lg">
             <DoorOpen className="w-5 h-5" />
             {t('im_shopkeeper')}
+          </Button>
+          <Button onClick={() => navigate('/auth', { state: { role: 'farmer' } })} variant="outline" className="w-full h-14 text-base font-display font-semibold rounded-xl gap-3 border-2 border-accent text-accent" size="lg">
+            <Wheat className="w-5 h-5" />
+            {t('im_farmer')}
+          </Button>
+          <Button onClick={() => navigate('/auth', { state: { role: 'hotel' } })} variant="outline" className="w-full h-14 text-base font-display font-semibold rounded-xl gap-3 border-2" size="lg">
+            <UtensilsCrossed className="w-5 h-5" />
+            {t('im_hotel')}
           </Button>
           <button onClick={() => navigate('/auth', { state: { role: 'rider' } })} className="text-sm text-muted-foreground hover:text-primary transition-colors flex items-center justify-center gap-2 py-3 w-full min-h-[44px]">
             <Bike className="w-4 h-4" />
