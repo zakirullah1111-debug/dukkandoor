@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      farmer_profiles: {
+        Row: {
+          created_at: string
+          farm_landmark: string | null
+          farm_lat: number | null
+          farm_lng: number | null
+          full_name: string
+          id: string
+          saved_contacts: Json | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          farm_landmark?: string | null
+          farm_lat?: number | null
+          farm_lng?: number | null
+          full_name?: string
+          id?: string
+          saved_contacts?: Json | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          farm_landmark?: string | null
+          farm_lat?: number | null
+          farm_lng?: number | null
+          full_name?: string
+          id?: string
+          saved_contacts?: Json | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       favorites: {
         Row: {
           created_at: string
@@ -37,6 +70,98 @@ export type Database = {
           shop_id?: string | null
         }
         Relationships: []
+      }
+      hotel_profiles: {
+        Row: {
+          address: string
+          business_hours: Json | null
+          created_at: string
+          description: string
+          hotel_name: string
+          hotel_type: string
+          id: string
+          is_open: boolean
+          logo_url: string
+          prep_time_minutes: number
+          rating: number
+          user_id: string
+          village: string
+        }
+        Insert: {
+          address?: string
+          business_hours?: Json | null
+          created_at?: string
+          description?: string
+          hotel_name?: string
+          hotel_type?: string
+          id?: string
+          is_open?: boolean
+          logo_url?: string
+          prep_time_minutes?: number
+          rating?: number
+          user_id: string
+          village?: string
+        }
+        Update: {
+          address?: string
+          business_hours?: Json | null
+          created_at?: string
+          description?: string
+          hotel_name?: string
+          hotel_type?: string
+          id?: string
+          is_open?: boolean
+          logo_url?: string
+          prep_time_minutes?: number
+          rating?: number
+          user_id?: string
+          village?: string
+        }
+        Relationships: []
+      }
+      menu_items: {
+        Row: {
+          category: string
+          created_at: string
+          description: string
+          hotel_id: string
+          id: string
+          image_url: string | null
+          is_available: boolean
+          name: string
+          price: number
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          description?: string
+          hotel_id: string
+          id?: string
+          image_url?: string | null
+          is_available?: boolean
+          name: string
+          price?: number
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          description?: string
+          hotel_id?: string
+          id?: string
+          image_url?: string | null
+          is_available?: boolean
+          name?: string
+          price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "menu_items_hotel_id_fkey"
+            columns: ["hotel_id"]
+            isOneToOne: false
+            referencedRelation: "hotel_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       messages: {
         Row: {
@@ -139,7 +264,13 @@ export type Database = {
           delivery_lat: number | null
           delivery_lng: number | null
           delivery_photo_url: string
+          farmer_offered_fee: number | null
+          fee_acceptance_deadline: string | null
+          home_contact_number: string | null
+          hotel_id: string | null
           id: string
+          items_description: string | null
+          order_type: string
           payment_method: string
           rider_id: string | null
           rider_selected_by_customer: boolean
@@ -148,6 +279,7 @@ export type Database = {
           shop_lng: number | null
           status: string
           total_amount: number
+          urgent: boolean
         }
         Insert: {
           created_at?: string
@@ -158,7 +290,13 @@ export type Database = {
           delivery_lat?: number | null
           delivery_lng?: number | null
           delivery_photo_url?: string
+          farmer_offered_fee?: number | null
+          fee_acceptance_deadline?: string | null
+          home_contact_number?: string | null
+          hotel_id?: string | null
           id?: string
+          items_description?: string | null
+          order_type?: string
           payment_method?: string
           rider_id?: string | null
           rider_selected_by_customer?: boolean
@@ -167,6 +305,7 @@ export type Database = {
           shop_lng?: number | null
           status?: string
           total_amount?: number
+          urgent?: boolean
         }
         Update: {
           created_at?: string
@@ -177,7 +316,13 @@ export type Database = {
           delivery_lat?: number | null
           delivery_lng?: number | null
           delivery_photo_url?: string
+          farmer_offered_fee?: number | null
+          fee_acceptance_deadline?: string | null
+          home_contact_number?: string | null
+          hotel_id?: string | null
           id?: string
+          items_description?: string | null
+          order_type?: string
           payment_method?: string
           rider_id?: string | null
           rider_selected_by_customer?: boolean
@@ -186,6 +331,7 @@ export type Database = {
           shop_lng?: number | null
           status?: string
           total_amount?: number
+          urgent?: boolean
         }
         Relationships: [
           {
