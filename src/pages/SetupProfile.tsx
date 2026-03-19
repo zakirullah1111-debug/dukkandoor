@@ -18,7 +18,7 @@ const SetupProfile = () => {
   if (authLoading) return null;
   if (!session) { navigate('/', { replace: true }); return null; }
   if (user?.name) {
-    const routes: Record<string, string> = { customer: '/home', shopkeeper: '/shopkeeper', rider: '/rider', admin: '/admin' };
+    const routes: Record<string, string> = { customer: '/home', shopkeeper: '/shopkeeper', rider: '/rider', admin: '/admin', farmer: '/farmer', hotel: '/hotel' };
     navigate(routes[user.role] || '/home', { replace: true });
     return null;
   }
@@ -41,6 +41,10 @@ const SetupProfile = () => {
       toast.success('Profile saved!');
       if (user?.role === 'shopkeeper') {
         navigate('/shopkeeper/setup', { replace: true });
+      } else if (user?.role === 'farmer') {
+        navigate('/farmer/setup', { replace: true });
+      } else if (user?.role === 'hotel') {
+        navigate('/hotel/setup', { replace: true });
       } else {
         const routes: Record<string, string> = { customer: '/home', rider: '/rider', admin: '/admin' };
         navigate(routes[user?.role || 'customer'] || '/home', { replace: true });
