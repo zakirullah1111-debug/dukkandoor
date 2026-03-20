@@ -14,6 +14,90 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_settings: {
+        Row: {
+          id: string
+          key: string
+          updated_at: string
+          value: string
+        }
+        Insert: {
+          id?: string
+          key: string
+          updated_at?: string
+          value?: string
+        }
+        Update: {
+          id?: string
+          key?: string
+          updated_at?: string
+          value?: string
+        }
+        Relationships: []
+      }
+      announcements: {
+        Row: {
+          body: string
+          created_at: string
+          expires_at: string | null
+          id: string
+          is_active: boolean
+          target_role: string | null
+          target_village: string | null
+          title: string
+        }
+        Insert: {
+          body?: string
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          target_role?: string | null
+          target_village?: string | null
+          title: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          target_role?: string | null
+          target_village?: string | null
+          title?: string
+        }
+        Relationships: []
+      }
+      broadcast_logs: {
+        Row: {
+          body: string
+          id: string
+          reach_count: number
+          sent_at: string
+          target_group: string
+          target_village: string | null
+          title: string
+        }
+        Insert: {
+          body?: string
+          id?: string
+          reach_count?: number
+          sent_at?: string
+          target_group: string
+          target_village?: string | null
+          title: string
+        }
+        Update: {
+          body?: string
+          id?: string
+          reach_count?: number
+          sent_at?: string
+          target_group?: string
+          target_village?: string | null
+          title?: string
+        }
+        Relationships: []
+      }
       farmer_profiles: {
         Row: {
           created_at: string
@@ -637,6 +721,41 @@ export type Database = {
           {
             foreignKeyName: "shops_owner_id_fkey"
             columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      villages: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          source: string
+          status: string
+          submitted_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          source?: string
+          status?: string
+          submitted_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          source?: string
+          status?: string
+          submitted_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "villages_submitted_by_fkey"
+            columns: ["submitted_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
