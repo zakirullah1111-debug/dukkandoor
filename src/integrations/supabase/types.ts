@@ -274,7 +274,7 @@ export type Database = {
           payment_method: string
           rider_id: string | null
           rider_selected_by_customer: boolean
-          shop_id: string
+          shop_id: string | null
           shop_lat: number | null
           shop_lng: number | null
           status: string
@@ -300,7 +300,7 @@ export type Database = {
           payment_method?: string
           rider_id?: string | null
           rider_selected_by_customer?: boolean
-          shop_id: string
+          shop_id?: string | null
           shop_lat?: number | null
           shop_lng?: number | null
           status?: string
@@ -326,7 +326,7 @@ export type Database = {
           payment_method?: string
           rider_id?: string | null
           rider_selected_by_customer?: boolean
-          shop_id?: string
+          shop_id?: string | null
           shop_lat?: number | null
           shop_lng?: number | null
           status?: string

@@ -56,7 +56,6 @@ const FarmerHomePickup = () => {
     try {
       const { data: order, error } = await (supabase as any).from('orders').insert({
         customer_id: session.user.id,
-        shop_id: session.user.id, // Self-reference for home pickup
         order_type: 'home_pickup',
         items_description: itemsDesc.trim(),
         home_contact_number: contactNumber,
