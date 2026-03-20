@@ -26,7 +26,6 @@ import ShopkeeperOrders from "./pages/ShopkeeperOrders";
 import RiderDashboard from "./pages/RiderDashboard";
 import RiderProfile from "./pages/RiderProfile";
 import RiderEditProfile from "./pages/RiderEditProfile";
-import AdminDashboard from "./pages/AdminDashboard";
 import NotFound from "./pages/NotFound";
 // Farmer
 import FarmerSetup from "./pages/FarmerSetup";
@@ -41,6 +40,19 @@ import HotelDashboard from "./pages/HotelDashboard";
 import HotelMenu from "./pages/HotelMenu";
 import HotelOrders from "./pages/HotelOrders";
 import HotelPage from "./pages/HotelPage";
+// Admin
+import AdminLogin from "./pages/AdminLogin";
+import AdminLayout from "./components/admin/AdminLayout";
+import AdminOverview from "./pages/admin/AdminOverview";
+import AdminOrders from "./pages/admin/AdminOrders";
+import AdminUsers from "./pages/admin/AdminUsers";
+import AdminShops from "./pages/admin/AdminShops";
+import AdminRiders from "./pages/admin/AdminRiders";
+import AdminVillages from "./pages/admin/AdminVillages";
+import AdminReports from "./pages/admin/AdminReports";
+import AdminNotifications from "./pages/admin/AdminNotifications";
+import AdminAnalytics from "./pages/admin/AdminAnalytics";
+import AdminSettings from "./pages/admin/AdminSettings";
 
 const queryClient = new QueryClient();
 
@@ -86,8 +98,20 @@ const AppRoutes = () => (
     <Route path="/rider" element={<ProtectedRoute allowedRoles={['rider']}><RiderDashboard /></ProtectedRoute>} />
     <Route path="/rider/edit-profile" element={<ProtectedRoute allowedRoles={['rider']}><RiderEditProfile /></ProtectedRoute>} />
 
-    {/* Admin */}
-    <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} />
+    {/* Admin — separate auth */}
+    <Route path="/admin" element={<AdminLogin />} />
+    <Route path="/admin/*" element={<AdminLayout />}>
+      <Route path="dashboard" element={<AdminOverview />} />
+      <Route path="orders" element={<AdminOrders />} />
+      <Route path="users" element={<AdminUsers />} />
+      <Route path="shops" element={<AdminShops />} />
+      <Route path="riders" element={<AdminRiders />} />
+      <Route path="villages" element={<AdminVillages />} />
+      <Route path="reports" element={<AdminReports />} />
+      <Route path="notifications" element={<AdminNotifications />} />
+      <Route path="analytics" element={<AdminAnalytics />} />
+      <Route path="settings" element={<AdminSettings />} />
+    </Route>
 
     {/* Farmer */}
     <Route path="/farmer/setup" element={<FarmerSetup />} />
