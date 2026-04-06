@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ToggleLeft, ToggleRight, DollarSign, Bike, Loader2, UserCircle, Camera, Target, TrendingUp, Flame, MessageCircle } from 'lucide-react';
+import { ToggleLeft, ToggleRight, DollarSign, Bike, Loader2, UserCircle, Camera, Target, TrendingUp, Flame, MessageCircle, Settings } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import LanguageToggle from '@/components/LanguageToggle';
