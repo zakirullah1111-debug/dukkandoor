@@ -41,16 +41,15 @@ const SetupProfile = () => {
   const handleAddCustomVillage = async () => {
     const trimmed = customVillage.trim();
     if (!trimmed) return;
-    // Insert as pending
     await (supabase as any).from('villages').insert({
       name: trimmed,
-      status: 'pending',
+      status: 'approved',
       source: 'user',
       submitted_by: session.user.id,
     });
     setVillage(trimmed);
     setShowCustomInput(false);
-    toast.success('Village submitted! It will appear for others after approval.');
+    toast.success('Village added successfully!');
   };
 
   const handleSubmit = async () => {
@@ -153,9 +152,6 @@ const SetupProfile = () => {
                   >
                     Submit Village
                   </Button>
-                  <p className="text-xs text-muted-foreground text-center">
-                    Your village will appear for others after admin approval
-                  </p>
                 </div>
               )}
             </>
