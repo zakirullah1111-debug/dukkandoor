@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ToggleLeft, ToggleRight, DollarSign, Package, ChevronRight, Loader2, Plus, Clock, X } from 'lucide-react';
+import { ToggleLeft, ToggleRight, DollarSign, Package, ChevronRight, Loader2, Plus, Clock, X, Settings } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import LanguageToggle from '@/components/LanguageToggle';
