@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Home, ClipboardList, User, MapPin, Loader2, AlertTriangle } from 'lucide-react';
+import { Home, ClipboardList, User, MapPin, Loader2, AlertTriangle, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/contexts/AuthContext';
