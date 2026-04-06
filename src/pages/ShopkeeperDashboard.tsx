@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Package, DollarSign, ShoppingBag, ToggleLeft, ToggleRight, Plus, ChevronRight, Store, Loader2, Clock, X } from 'lucide-react';
+import { Package, DollarSign, ShoppingBag, ToggleLeft, ToggleRight, Plus, ChevronRight, Store, Loader2, Clock, X, Settings } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import LanguageToggle from '@/components/LanguageToggle';
@@ -122,7 +122,9 @@ const ShopkeeperDashboard = () => {
         </div>
         <div className="flex items-center gap-2">
           <LanguageToggle />
-          <button onClick={async () => { await logout(); navigate('/', { replace: true }); }} className="text-sm text-muted-foreground">{t('logout')}</button>
+          <button onClick={() => navigate('/settings')} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
+            <Settings className="w-5 h-5 text-muted-foreground" />
+          </button>
         </div>
       </div>
 

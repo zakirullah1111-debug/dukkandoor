@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ToggleLeft, ToggleRight, DollarSign, Bike, Loader2, UserCircle, Camera, Target, TrendingUp, Flame, MessageCircle } from 'lucide-react';
+import { ToggleLeft, ToggleRight, DollarSign, Bike, Loader2, UserCircle, Camera, Target, TrendingUp, Flame, MessageCircle, Settings } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import LanguageToggle from '@/components/LanguageToggle';
@@ -218,7 +218,9 @@ const RiderDashboard = () => {
         <div className="flex items-center gap-2">
           <LanguageToggle />
           <button onClick={() => navigate('/rider/edit-profile')} className="p-2 text-muted-foreground"><UserCircle className="w-5 h-5" /></button>
-          <button onClick={async () => { await logout(); navigate('/', { replace: true }); }} className="text-sm text-muted-foreground">{t('logout')}</button>
+          <button onClick={() => navigate('/settings')} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
+            <Settings className="w-5 h-5 text-muted-foreground" />
+          </button>
         </div>
       </div>
 
