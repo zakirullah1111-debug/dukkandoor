@@ -1,26 +1,36 @@
 
 
-## Fix Admin Login for zakirullah20331@gmail.com
+## Plan: Replace Fake Villages with Real Names + "Add Your Village" Feature
 
-### Problem
-The email exists in auth but has no corresponding row in the `profiles` table. The admin login at `/admin` checks `profiles.role = 'admin'` after authentication — since no profile exists, it returns "Unauthorized access."
+### Current State
+- `SetupProfile.tsx` has a hardcoded array of fake village names: `['Chak 45', 'Chak 60', 'Chak 72', 'Moza Ali', 'Basti Lal']`
+- A `villages` table already exists in the database with columns: `id`, `name`, `status`, `source`, `submitted_by`, `created_at`
+- Admin already has a village management page (`AdminVillages.tsx`) with approve/reject workflow
+- The villages table is currently empty
 
-### Solution (2 steps)
+### Changes
 
-1. **Insert a profile row** for user ID `03b6cafc-df1f-47a4-8559-7710f230513f` with `role = 'admin'` using the database insert tool.
+**1. Seed the villages table with real village names**
+Insert 10 approved villages: Maizara, Kotlai, Paindashah, Sangaar, Gharonotangay, Melagah, Qamboo, Kasai, Hafiz Baba, Surazgho (source: `system`, status: `approved`).
 
-2. **Update the password** for this auth user to `Swat@88991` — since the account was likely created via the phone-based signup flow, the current password is probably the phone number. I'll use the Supabase admin API (via an edge function or auth admin call) to reset the password to the requested one.
+**2. Rewrite `SetupProfile.tsx` to fetch villages from the database**
+- Remove the hardcoded array
+- Fetch approved villages from the `villages` table on mount
+- Display them as selectable buttons (same UI style)
+- Add an "Add Your Village" button at the end of the grid
+- When clicked, show an input field where the user types their village name
+- On submit, insert the new village into the `villages` table with `status: 'pending'`, `source: 'user'`, `submitted_by: user.id`
+- Set the user's profile village to the custom name immediately (so they aren't blocked)
+- Show a note like "Your village will appear for others after approval"
+
+**3. Update `Profile.tsx`**
+- The village field already displays `user?.village` — no change needed. It will show whatever was saved.
+
+**4. No schema changes needed**
+The `villages` table already supports this workflow perfectly (status, source, submitted_by columns).
 
 ### Technical Details
-
-**Step 1 — Profile insert:**
-```sql
-INSERT INTO profiles (id, name, phone, role, village, address)
-VALUES ('03b6cafc-df1f-47a4-8559-7710f230513f', 'Zakir Ullah', '', 'admin', '', '');
-```
-
-**Step 2 — Password update:**
-Use a temporary edge function calling `supabase.auth.admin.updateUserById()` to set the password to `Swat@88991`, then delete the function.
-
-No code file changes needed — this is purely a data/auth fix.
+- The `villages` table RLS already allows authenticated users to insert with `submitted_by = auth.uid()` and public to read approved villages — perfect for this use case.
+- The `SetupProfile` page will query `villages` where `status = 'approved'` and order by name.
+- Custom village submission creates a pending entry that admins can approve via the existing `AdminVillages` page.
 
