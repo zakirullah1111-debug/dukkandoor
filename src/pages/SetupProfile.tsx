@@ -152,9 +152,6 @@ const SetupProfile = () => {
                   >
                     Submit Village
                   </Button>
-                  <p className="text-xs text-muted-foreground text-center">
-                    Your village will appear for others after admin approval
-                  </p>
                 </div>
               )}
             </>
