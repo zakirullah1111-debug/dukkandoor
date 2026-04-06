@@ -62,7 +62,9 @@ const FarmerDashboard = () => {
             </div>
             <div className="flex items-center gap-2">
               <LanguageToggle />
-              <button onClick={async () => { await logout(); navigate('/', { replace: true }); }} className="text-xs text-muted-foreground">{t('logout')}</button>
+              <button onClick={() => navigate('/settings')} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
+                <Settings className="w-5 h-5 text-muted-foreground" />
+              </button>
             </div>
           </div>
 
