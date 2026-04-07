@@ -57,6 +57,7 @@ const CustomerHome = () => {
         <div className="bg-gradient-to-r from-primary to-primary/80 rounded-2xl p-5 text-primary-foreground">
           <p className="text-sm font-medium opacity-90">{t('welcome_to')}</p>
           <h2 className="font-display text-xl font-bold mt-0.5">DukkanDoor 🚪</h2>
+          {user?.name && <p className="text-sm font-semibold mt-0.5 opacity-95">Dear {user.name}</p>}
           <p className="text-sm mt-1 opacity-80">{t('free_delivery_first')}</p>
         </div>
 
