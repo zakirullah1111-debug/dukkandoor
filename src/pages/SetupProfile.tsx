@@ -5,7 +5,10 @@ import { Input } from '@/components/ui/input';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Plus, Loader2 } from 'lucide-react';
+import { Plus, Loader2, Check, ChevronsUpDown } from 'lucide-react';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from '@/components/ui/command';
+import { cn } from '@/lib/utils';
 
 const SetupProfile = () => {
   const navigate = useNavigate();
@@ -17,6 +20,7 @@ const SetupProfile = () => {
   const [loadingVillages, setLoadingVillages] = useState(true);
   const [showCustomInput, setShowCustomInput] = useState(false);
   const [customVillage, setCustomVillage] = useState('');
+  const [open, setOpen] = useState(false);
 
   useEffect(() => {
     (supabase as any)
@@ -47,8 +51,10 @@ const SetupProfile = () => {
       source: 'user',
       submitted_by: session.user.id,
     });
+    setVillages(prev => [...prev, { id: crypto.randomUUID(), name: trimmed }]);
     setVillage(trimmed);
     setShowCustomInput(false);
+    setCustomVillage('');
     toast.success('Village added successfully!');
   };
 
@@ -108,32 +114,56 @@ const SetupProfile = () => {
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-2 gap-2">
-                {villages.map(v => (
-                  <button
-                    key={v.id}
-                    onClick={() => { setVillage(v.name); setShowCustomInput(false); }}
-                    className={`h-12 rounded-xl border-2 text-sm font-medium transition-all ${
-                      village === v.name && !showCustomInput
-                        ? 'border-primary bg-primary/10 text-primary'
-                        : 'border-border text-foreground hover:border-primary/30'
-                    }`}
+              <Popover open={open} onOpenChange={setOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={open}
+                    className="w-full h-14 justify-between rounded-xl text-base font-normal"
                   >
-                    {v.name}
-                  </button>
-                ))}
-                <button
-                  onClick={() => { setShowCustomInput(true); setVillage(''); }}
-                  className={`h-12 rounded-xl border-2 border-dashed text-sm font-medium transition-all flex items-center justify-center gap-1.5 ${
-                    showCustomInput
-                      ? 'border-primary bg-primary/10 text-primary'
-                      : 'border-border text-muted-foreground hover:border-primary/30 hover:text-foreground'
-                  }`}
-                >
-                  <Plus className="w-4 h-4" />
-                  Add Your Village
-                </button>
-              </div>
+                    {village ? village : 'Select your village...'}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Search village..." />
+                    <CommandList>
+                      <CommandEmpty>No village found.</CommandEmpty>
+                      <CommandGroup>
+                        {villages.map(v => (
+                          <CommandItem
+                            key={v.id}
+                            value={v.name}
+                            onSelect={() => {
+                              setVillage(v.name);
+                              setShowCustomInput(false);
+                              setOpen(false);
+                            }}
+                          >
+                            <Check className={cn('mr-2 h-4 w-4', village === v.name ? 'opacity-100' : 'opacity-0')} />
+                            {v.name}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                      <CommandGroup>
+                        <CommandItem
+                          onSelect={() => {
+                            setShowCustomInput(true);
+                            setVillage('');
+                            setOpen(false);
+                          }}
+                          className="text-primary"
+                        >
+                          <Plus className="mr-2 h-4 w-4" />
+                          Add Your Village
+                        </CommandItem>
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
 
               {showCustomInput && (
                 <div className="mt-3 space-y-2">
