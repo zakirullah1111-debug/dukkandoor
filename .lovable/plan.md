@@ -1,36 +1,31 @@
 
 
-## Plan: Replace Fake Villages with Real Names + "Add Your Village" Feature
+## Plan: Replace Village Grid with Searchable Dropdown + "Add Your Village"
 
-### Current State
-- `SetupProfile.tsx` has a hardcoded array of fake village names: `['Chak 45', 'Chak 60', 'Chak 72', 'Moza Ali', 'Basti Lal']`
-- A `villages` table already exists in the database with columns: `id`, `name`, `status`, `source`, `submitted_by`, `created_at`
-- Admin already has a village management page (`AdminVillages.tsx`) with approve/reject workflow
-- The villages table is currently empty
+### What changes
+Replace the current grid of village buttons in `SetupProfile.tsx` with a searchable dropdown (Popover + Command pattern from shadcn/ui) that:
+- Shows a search input to filter villages by name
+- Lists all approved villages from the database
+- Shows an "Add Your Village" option at the bottom when no match is found (or always)
+- Clicking "Add Your Village" reveals an inline input to type and submit a new village name (same logic as now, instant approval)
+- Selected village displays in the trigger button
 
-### Changes
+### File changes
 
-**1. Seed the villages table with real village names**
-Insert 10 approved villages: Maizara, Kotlai, Paindashah, Sangaar, Gharonotangay, Melagah, Qamboo, Kasai, Hafiz Baba, Surazgho (source: `system`, status: `approved`).
+**`src/pages/SetupProfile.tsx`**
+- Remove the grid-based village buttons
+- Import `Popover`, `PopoverTrigger`, `PopoverContent` from `@/components/ui/popover`
+- Import `Command`, `CommandInput`, `CommandList`, `CommandEmpty`, `CommandGroup`, `CommandItem` from `@/components/ui/command`
+- Import `Check`, `ChevronsUpDown`, `Plus` icons
+- Build a combobox-style dropdown:
+  - Trigger button shows selected village or placeholder "Select your village..."
+  - Popover content uses Command with search input
+  - CommandGroup lists all fetched villages, filterable by typing
+  - CommandEmpty shows "No village found"
+  - A separate CommandItem at the bottom: "+ Add Your Village" which toggles the custom input
+- Keep the existing custom village input/submit flow below the dropdown when "Add Your Village" is clicked
+- All existing logic (fetch, insert, submit profile) stays the same
 
-**2. Rewrite `SetupProfile.tsx` to fetch villages from the database**
-- Remove the hardcoded array
-- Fetch approved villages from the `villages` table on mount
-- Display them as selectable buttons (same UI style)
-- Add an "Add Your Village" button at the end of the grid
-- When clicked, show an input field where the user types their village name
-- On submit, insert the new village into the `villages` table with `status: 'pending'`, `source: 'user'`, `submitted_by: user.id`
-- Set the user's profile village to the custom name immediately (so they aren't blocked)
-- Show a note like "Your village will appear for others after approval"
-
-**3. Update `Profile.tsx`**
-- The village field already displays `user?.village` — no change needed. It will show whatever was saved.
-
-**4. No schema changes needed**
-The `villages` table already supports this workflow perfectly (status, source, submitted_by columns).
-
-### Technical Details
-- The `villages` table RLS already allows authenticated users to insert with `submitted_by = auth.uid()` and public to read approved villages — perfect for this use case.
-- The `SetupProfile` page will query `villages` where `status = 'approved'` and order by name.
-- Custom village submission creates a pending entry that admins can approve via the existing `AdminVillages` page.
+### No other files change
+The dropdown uses existing shadcn/ui components already in the project.
 
