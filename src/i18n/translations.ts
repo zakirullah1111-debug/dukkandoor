@@ -176,7 +176,7 @@ export const translations: Record<string, Record<Language, string>> = {
   'notifications': { en: 'Notifications', ur: 'اطلاعات' },
   'settings': { en: 'Settings', ur: 'ترتیبات' },
   'logout': { en: 'Logout', ur: 'لاگ آؤٹ' },
-  'categories': { en: 'Categories', ur: 'کیٹیگریز' },
+  'categories': { en: 'Shops', ur: 'دکانیں' },
   'from': { en: 'From', ur: 'سے' },
   'items': { en: 'items', ur: 'آئٹمز' },
   'fee': { en: 'fee', ur: 'فیس' },

@@ -24,7 +24,7 @@ const CustomerHome = () => {
   useEffect(() => {
     const fetchData = async () => {
       const [shopsRes, productsRes] = await Promise.all([
-        (supabase as any).from('shops').select('*').eq('is_open', true),
+        (supabase as any).from('shops').select('*').eq('is_open', true).limit(4),
         (supabase as any).from('products').select('*').gt('discount_percent', 0).eq('in_stock', true).limit(10),
       ]);
       if (shopsRes.data) setShops(shopsRes.data);
