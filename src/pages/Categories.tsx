@@ -29,7 +29,7 @@ const Categories = () => {
   return (
     <MobileLayout>
       <div className="px-4 pt-4">
-        <h1 className="font-display text-xl font-bold mb-4">Categories</h1>
+        <h1 className="font-display text-xl font-bold mb-4">Shops</h1>
 
         <div className="flex gap-2 flex-wrap mb-5">
           <button
