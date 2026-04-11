@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Phone } from 'lucide-react';
+import { ArrowLeft, Phone, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/contexts/AuthContext';
@@ -21,10 +21,20 @@ const Auth = () => {
   const [step, setStep] = useState<'phone' | 'otp'>('phone');
   const [loading, setLoading] = useState(false);
   const [isReturningUser, setIsReturningUser] = useState(false);
+  const [roleMismatchError, setRoleMismatchError] = useState('');
+
+  const roleLabels: Record<string, string> = {
+    customer: t('customer'),
+    shopkeeper: t('shopkeeper'),
+    rider: t('delivery_rider'),
+    farmer: t('farmer'),
+    hotel: t('hotel_owner'),
+  };
 
   const handleSendOtp = async () => {
     if (phone.replace(/\s/g, '').length < 10) return;
     setLoading(true);
+    setRoleMismatchError('');
 
     // Check if this phone number already exists in profiles
     const clean = phone.replace(/\s/g, '');
@@ -35,24 +45,27 @@ const Auth = () => {
       .maybeSingle();
 
     setIsReturningUser(!!data);
-
     setTimeout(() => { setStep('otp'); setLoading(false); }, 800);
   };
 
   const handleVerifyOtp = async () => {
     if (otp.length < 4) return;
     setLoading(true);
+    setRoleMismatchError('');
     try {
       await signUp(phone, role);
       toast.success(isReturningUser ? 'Welcome back!' : 'Welcome to DukkanDoor!');
       navigate('/setup', { replace: true });
     } catch (err: any) {
-      toast.error(err.message || t('error_retry'));
-    } finally { setLoading(false); }
-  };
-
-  const roleLabels: Record<string, string> = {
-    customer: t('customer'), shopkeeper: t('shopkeeper'), rider: t('delivery_rider'), farmer: t('farmer'), hotel: t('hotel_owner'),
+      // Check if it's a role mismatch error
+      if (err.message?.includes('already registered as')) {
+        setRoleMismatchError(err.message);
+      } else {
+        toast.error(err.message || t('error_retry'));
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   const getSubtitle = () => {
@@ -69,6 +82,7 @@ const Auth = () => {
         </button>
         <LanguageToggle />
       </div>
+
       <div className="mt-8 animate-fade-in">
         <h1 className="font-display text-2xl font-bold">
           {step === 'phone'
@@ -76,6 +90,7 @@ const Auth = () => {
             : t('enter_otp')}
         </h1>
         <p className="text-muted-foreground mt-1">{getSubtitle()}</p>
+
         <div className="mt-8 space-y-4">
           {step === 'phone' ? (
             <>
@@ -85,12 +100,20 @@ const Auth = () => {
                   type="tel"
                   placeholder="03XX XXXXXXX"
                   value={phone}
-                  onChange={e => { setPhone(e.target.value); setIsReturningUser(false); }}
+                  onChange={e => {
+                    setPhone(e.target.value);
+                    setIsReturningUser(false);
+                    setRoleMismatchError('');
+                  }}
                   className="h-14 text-lg ps-11 rounded-xl"
                   maxLength={11}
                 />
               </div>
-              <Button onClick={handleSendOtp} disabled={phone.replace(/\s/g, '').length < 10 || loading} className="w-full h-14 text-base font-display font-semibold rounded-xl">
+              <Button
+                onClick={handleSendOtp}
+                disabled={phone.replace(/\s/g, '').length < 10 || loading}
+                className="w-full h-14 text-base font-display font-semibold rounded-xl"
+              >
                 {loading ? t('sending') : t('send_otp')}
               </Button>
             </>
@@ -100,16 +123,42 @@ const Auth = () => {
                 type="text"
                 placeholder="Enter 4-digit OTP"
                 value={otp}
-                onChange={e => setOtp(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                onChange={e => {
+                  setOtp(e.target.value.replace(/\D/g, '').slice(0, 4));
+                  setRoleMismatchError('');
+                }}
                 className="h-14 text-2xl text-center tracking-[0.5em] rounded-xl font-display"
                 maxLength={4}
               />
               <p className="text-xs text-muted-foreground text-center">{t('mvp_hint')}</p>
-              <Button onClick={handleVerifyOtp} disabled={otp.length < 4 || loading} className="w-full h-14 text-base font-display font-semibold rounded-xl">
-                {loading ? t('verifying') : t('verify_continue')}
-              </Button>
+
+              {/* Role mismatch error box */}
+              {roleMismatchError ? (
+                <div className="bg-destructive/10 border border-destructive/30 rounded-xl p-4 flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-semibold text-destructive">Wrong account type</p>
+                    <p className="text-sm text-destructive/80 mt-0.5">{roleMismatchError}</p>
+                    <button
+                      onClick={() => navigate('/')}
+                      className="mt-2 text-sm font-bold text-destructive underline underline-offset-2"
+                    >
+                      ← Go back to select correct role
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <Button
+                  onClick={handleVerifyOtp}
+                  disabled={otp.length < 4 || loading}
+                  className="w-full h-14 text-base font-display font-semibold rounded-xl"
+                >
+                  {loading ? t('verifying') : t('verify_continue')}
+                </Button>
+              )}
+
               <button
-                onClick={() => { setStep('phone'); setOtp(''); }}
+                onClick={() => { setStep('phone'); setOtp(''); setRoleMismatchError(''); }}
                 className="w-full text-sm text-muted-foreground text-center py-2 min-h-[40px]"
               >
                 ← Change phone number
