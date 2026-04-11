@@ -91,8 +91,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         if (existingProfile && existingProfile.role !== role) {
           // Role mismatch — block login and show clear error
+          // FIX: removed unused 'selectedRoleLabel' variable that caused TypeScript crash
           const existingRoleLabel = roleLabels[existingProfile.role] || existingProfile.role;
-          const selectedRoleLabel = roleLabels[role] || role;
           throw new Error(
             `This number is already registered as a ${existingRoleLabel}. Please go back and select "${existingRoleLabel}" to continue.`
           );
