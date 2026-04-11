@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import LanguageToggle from '@/components/LanguageToggle';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -19,10 +20,22 @@ const Auth = () => {
   const [otp, setOtp] = useState('');
   const [step, setStep] = useState<'phone' | 'otp'>('phone');
   const [loading, setLoading] = useState(false);
+  const [isReturningUser, setIsReturningUser] = useState(false);
 
-  const handleSendOtp = () => {
+  const handleSendOtp = async () => {
     if (phone.replace(/\s/g, '').length < 10) return;
     setLoading(true);
+
+    // Check if this phone number already exists in profiles
+    const clean = phone.replace(/\s/g, '');
+    const { data } = await (supabase as any)
+      .from('profiles')
+      .select('id')
+      .eq('phone', clean)
+      .maybeSingle();
+
+    setIsReturningUser(!!data);
+
     setTimeout(() => { setStep('otp'); setLoading(false); }, 800);
   };
 
@@ -31,7 +44,7 @@ const Auth = () => {
     setLoading(true);
     try {
       await signUp(phone, role);
-      toast.success('Welcome to DukkanDoor!');
+      toast.success(isReturningUser ? 'Welcome back!' : 'Welcome to DukkanDoor!');
       navigate('/setup', { replace: true });
     } catch (err: any) {
       toast.error(err.message || t('error_retry'));
@@ -40,6 +53,12 @@ const Auth = () => {
 
   const roleLabels: Record<string, string> = {
     customer: t('customer'), shopkeeper: t('shopkeeper'), rider: t('delivery_rider'), farmer: t('farmer'), hotel: t('hotel_owner'),
+  };
+
+  const getSubtitle = () => {
+    if (step === 'otp') return `${t('we_sent_code')} ${phone}`;
+    if (isReturningUser) return `Welcome back! Logging in as ${roleLabels[role] || role}`;
+    return `${t('signing_up_as')} ${roleLabels[role] || role}`;
   };
 
   return (
@@ -52,17 +71,24 @@ const Auth = () => {
       </div>
       <div className="mt-8 animate-fade-in">
         <h1 className="font-display text-2xl font-bold">
-          {step === 'phone' ? t('enter_phone') : t('enter_otp')}
+          {step === 'phone'
+            ? (isReturningUser ? 'Welcome Back!' : t('enter_phone'))
+            : t('enter_otp')}
         </h1>
-        <p className="text-muted-foreground mt-1">
-          {step === 'phone' ? `${t('signing_up_as')} ${roleLabels[role] || role}` : `${t('we_sent_code')} ${phone}`}
-        </p>
+        <p className="text-muted-foreground mt-1">{getSubtitle()}</p>
         <div className="mt-8 space-y-4">
           {step === 'phone' ? (
             <>
               <div className="relative">
                 <Phone className="absolute start-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                <Input type="tel" placeholder="03XX XXXXXXX" value={phone} onChange={e => setPhone(e.target.value)} className="h-14 text-lg ps-11 rounded-xl" maxLength={11} />
+                <Input
+                  type="tel"
+                  placeholder="03XX XXXXXXX"
+                  value={phone}
+                  onChange={e => { setPhone(e.target.value); setIsReturningUser(false); }}
+                  className="h-14 text-lg ps-11 rounded-xl"
+                  maxLength={11}
+                />
               </div>
               <Button onClick={handleSendOtp} disabled={phone.replace(/\s/g, '').length < 10 || loading} className="w-full h-14 text-base font-display font-semibold rounded-xl">
                 {loading ? t('sending') : t('send_otp')}
@@ -70,11 +96,24 @@ const Auth = () => {
             </>
           ) : (
             <>
-              <Input type="text" placeholder="Enter 4-digit OTP" value={otp} onChange={e => setOtp(e.target.value.replace(/\D/g, '').slice(0, 4))} className="h-14 text-2xl text-center tracking-[0.5em] rounded-xl font-display" maxLength={4} />
+              <Input
+                type="text"
+                placeholder="Enter 4-digit OTP"
+                value={otp}
+                onChange={e => setOtp(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                className="h-14 text-2xl text-center tracking-[0.5em] rounded-xl font-display"
+                maxLength={4}
+              />
               <p className="text-xs text-muted-foreground text-center">{t('mvp_hint')}</p>
               <Button onClick={handleVerifyOtp} disabled={otp.length < 4 || loading} className="w-full h-14 text-base font-display font-semibold rounded-xl">
                 {loading ? t('verifying') : t('verify_continue')}
               </Button>
+              <button
+                onClick={() => { setStep('phone'); setOtp(''); }}
+                className="w-full text-sm text-muted-foreground text-center py-2 min-h-[40px]"
+              >
+                ← Change phone number
+              </button>
             </>
           )}
         </div>
