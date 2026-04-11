@@ -56,10 +56,10 @@ const SetupProfile = () => {
       // Existing user tried to log in with wrong role — log them out immediately
       const existingRoleLabel = roleLabels[user.role] || user.role;
       logout().then(() => {
-        toast.error(
-          `This number is already registered as a ${existingRoleLabel}. Please go back and select "${existingRoleLabel}" to continue.`,
-          { duration: 6000 }
-        );
+        toast.error(`Already registered as ${existingRoleLabel}`, {
+          description: `Please sign in as a ${existingRoleLabel} to continue.`,
+          duration: 6000,
+        });
         navigate('/', { replace: true });
       });
     }
