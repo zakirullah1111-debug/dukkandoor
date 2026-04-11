@@ -16,7 +16,7 @@ const Welcome = () => {
     if (loading) return;
     if (!isAuthenticated) return;
     if (!user?.name) { navigate('/setup', { replace: true }); return; }
-    const routes: Record<string, string> = { customer: '/home', shopkeeper: '/shopkeeper', rider: '/rider', admin: '/admin', farmer: '/farmer', hotel: '/hotel' };
+    const routes: Record<string, string> = { customer: '/home', shopkeeper: '/shopkeeper', rider: '/rider', admin: '/admin/dashboard', farmer: '/farmer', hotel: '/hotel' };
     navigate(routes[user.role] || '/home', { replace: true });
   }, [loading, isAuthenticated, user, navigate]);
 
