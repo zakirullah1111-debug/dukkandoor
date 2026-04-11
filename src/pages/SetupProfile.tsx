@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/contexts/AuthContext';
@@ -10,9 +10,18 @@ import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
 
+const roleLabels: Record<string, string> = {
+  customer: 'Customer',
+  shopkeeper: 'Shopkeeper',
+  rider: 'Delivery Rider',
+  farmer: 'Farmer',
+  hotel: 'Hotel Owner',
+};
+
 const SetupProfile = () => {
   const navigate = useNavigate();
-  const { user, session, loading: authLoading, updateUser } = useAuth();
+  const location = useLocation();
+  const { user, session, loading: authLoading, updateUser, logout } = useAuth();
   const [name, setName] = useState('');
   const [village, setVillage] = useState('');
   const [saving, setSaving] = useState(false);
@@ -21,6 +30,9 @@ const SetupProfile = () => {
   const [showCustomInput, setShowCustomInput] = useState(false);
   const [customVillage, setCustomVillage] = useState('');
   const [open, setOpen] = useState(false);
+
+  // The role the user selected on the Welcome screen
+  const intendedRole = (location.state as any)?.intendedRole;
 
   useEffect(() => {
     (supabase as any)
@@ -34,11 +46,33 @@ const SetupProfile = () => {
       });
   }, []);
 
+  // Role mismatch check — runs when user profile loads
+  useEffect(() => {
+    if (authLoading || !session || !user) return;
+    if (!intendedRole) return;
+    if (!user.name) return; // new user, no redirect yet
+
+    if (user.role !== intendedRole) {
+      // Existing user tried to log in with wrong role — log them out immediately
+      const existingRoleLabel = roleLabels[user.role] || user.role;
+      logout().then(() => {
+        toast.error(
+          `This number is already registered as a ${existingRoleLabel}. Please go back and select "${existingRoleLabel}" to continue.`,
+          { duration: 6000 }
+        );
+        navigate('/', { replace: true });
+      });
+    }
+  }, [authLoading, session, user, intendedRole]);
+
   if (authLoading) return null;
   if (!session) { navigate('/', { replace: true }); return null; }
   if (user?.name) {
-    const routes: Record<string, string> = { customer: '/home', shopkeeper: '/shopkeeper', rider: '/rider', admin: '/admin', farmer: '/farmer', hotel: '/hotel' };
-    navigate(routes[user.role] || '/home', { replace: true });
+    // Only redirect if there is no mismatch (mismatch handled in useEffect above)
+    if (!intendedRole || user.role === intendedRole) {
+      const routes: Record<string, string> = { customer: '/home', shopkeeper: '/shopkeeper', rider: '/rider', admin: '/admin', farmer: '/farmer', hotel: '/hotel' };
+      navigate(routes[user.role] || '/home', { replace: true });
+    }
     return null;
   }
 
