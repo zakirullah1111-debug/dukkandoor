@@ -31,21 +31,25 @@ const Auth = () => {
     hotel: t('hotel_owner'),
   };
 
+  // FIX: added try/catch so a failed Supabase call doesn't crash the app
   const handleSendOtp = async () => {
     if (phone.replace(/\s/g, '').length < 10) return;
     setLoading(true);
     setRoleMismatchError('');
-
-    // Check if this phone number already exists in profiles
-    const clean = phone.replace(/\s/g, '');
-    const { data } = await (supabase as any)
-      .from('profiles')
-      .select('id')
-      .eq('phone', clean)
-      .maybeSingle();
-
-    setIsReturningUser(!!data);
-    setTimeout(() => { setStep('otp'); setLoading(false); }, 800);
+    try {
+      const clean = phone.replace(/\s/g, '');
+      const { data } = await (supabase as any)
+        .from('profiles')
+        .select('id')
+        .eq('phone', clean)
+        .maybeSingle();
+      setIsReturningUser(!!data);
+    } catch {
+      // If check fails, just continue — non-critical
+      setIsReturningUser(false);
+    } finally {
+      setTimeout(() => { setStep('otp'); setLoading(false); }, 800);
+    }
   };
 
   const handleVerifyOtp = async () => {
@@ -57,7 +61,6 @@ const Auth = () => {
       toast.success(isReturningUser ? 'Welcome back!' : 'Welcome to DukkanDoor!');
       navigate('/setup', { replace: true });
     } catch (err: any) {
-      // Check if it's a role mismatch error
       if (err.message?.includes('already registered as')) {
         setRoleMismatchError(err.message);
       } else {
