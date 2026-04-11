@@ -6,7 +6,7 @@ import { componentTagger } from "lovable-tagger";
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
   optimizeDeps: {
-    exclude: ['react-leaflet', '@react-leaflet/core'],
+    include: ['react-leaflet', '@react-leaflet/core', 'leaflet'],
   },
   server: {
     host: "::",
