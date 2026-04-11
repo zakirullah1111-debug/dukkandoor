@@ -45,25 +45,34 @@ const Auth = () => {
       // Step 1: sign in/up as usual
       await signUp(phone, role);
 
-      // Step 2: now authenticated — safely read the actual role from DB
-      const clean = phone.replace(/\s/g, '');
-      const { data: profile } = await (supabase as any)
-        .from('profiles')
-        .select('role')
-        .eq('phone', clean)
-        .maybeSingle();
+      // Step 2: get the current session — query profile by USER ID (not phone)
+      // This always works because Supabase allows users to read their own profile
+      const { data: sessionData } = await supabase.auth.getSession();
+      const userId = sessionData?.session?.user?.id;
 
-      // Step 3: if role doesn't match what user selected, log them out immediately
-      if (profile && profile.role !== role) {
-        await logout();
-        const existingRoleLabel = roleLabels[profile.role] || profile.role;
-        setRoleMismatchError(
-          `This number is already registered as a ${existingRoleLabel}. Please go back and select "${existingRoleLabel}" to continue.`
-        );
-        return;
+      if (userId) {
+        const { data: profile } = await (supabase as any)
+          .from('profiles')
+          .select('role')
+          .eq('id', userId)
+          .maybeSingle();
+
+        // Step 3: role mismatch — log them out immediately and show error
+        if (profile && profile.role !== role) {
+          await logout();
+          const existingRoleLabel = roleLabels[profile.role] || profile.role;
+          setRoleMismatchError(
+            `This number is already registered as a ${existingRoleLabel}. Please go back and select "${existingRoleLabel}" to continue.`
+          );
+          setLoading(false);
+          return;
+        }
+
+        // Step 4: returning user (same role)
+        if (profile) setIsReturningUser(true);
       }
 
-      // Step 4: all good — proceed
+      // Step 5: all good — proceed
       toast.success(isReturningUser ? 'Welcome back!' : 'Welcome to DukkanDoor!');
       navigate('/setup', { replace: true });
     } catch (err: any) {
@@ -83,7 +92,6 @@ const Auth = () => {
 
   const getSubtitle = () => {
     if (step === 'otp') return `${t('we_sent_code')} ${phone}`;
-    if (isReturningUser) return `Welcome back! Logging you in as ${t_roleLabels[role] || role}`;
     return `${t('signing_up_as')} ${t_roleLabels[role] || role}`;
   };
 
@@ -112,7 +120,6 @@ const Auth = () => {
                   value={phone}
                   onChange={e => {
                     setPhone(e.target.value);
-                    setIsReturningUser(false);
                     setRoleMismatchError('');
                   }}
                   className="h-14 text-lg ps-11 rounded-xl"
