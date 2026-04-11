@@ -26,6 +26,14 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const roleLabels: Record<string, string> = {
+  customer: 'Customer',
+  shopkeeper: 'Shopkeeper',
+  rider: 'Delivery Rider',
+  farmer: 'Farmer',
+  hotel: 'Hotel Owner',
+};
+
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<Profile | null>(null);
@@ -71,12 +79,31 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const clean = phone.replace(/\s/g, '');
     const email = `${clean}@dukkandoor.app`;
     const { data, error } = await supabase.auth.signUp({ email, password: clean });
+
     if (error) {
       if (error.message?.toLowerCase().includes('already registered')) {
+        // Check what role this phone number is registered under
+        const { data: existingProfile } = await (supabase as any)
+          .from('profiles')
+          .select('role')
+          .eq('phone', clean)
+          .maybeSingle();
+
+        if (existingProfile && existingProfile.role !== role) {
+          // Role mismatch — block login and show clear error
+          const existingRoleLabel = roleLabels[existingProfile.role] || existingProfile.role;
+          const selectedRoleLabel = roleLabels[role] || role;
+          throw new Error(
+            `This number is already registered as a ${existingRoleLabel}. Please go back and select "${existingRoleLabel}" to continue.`
+          );
+        }
+
+        // Same role or no profile found — proceed with normal sign in
         return signIn(phone);
       }
       throw error;
     }
+
     if (data.user) {
       await (supabase as any).from('profiles').insert({ id: data.user.id, phone: clean, role });
       await loadProfile(data.user.id);
