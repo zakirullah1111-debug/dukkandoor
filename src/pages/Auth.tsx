@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Phone } from 'lucide-react';
+import { ArrowLeft, Phone, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import LanguageToggle from '@/components/LanguageToggle';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -19,27 +20,61 @@ const Auth = () => {
   const [otp, setOtp] = useState('');
   const [step, setStep] = useState<'phone' | 'otp'>('phone');
   const [loading, setLoading] = useState(false);
+  const [isReturningUser, setIsReturningUser] = useState(false);
+  const [roleMismatchError, setRoleMismatchError] = useState('');
 
-  const handleSendOtp = () => {
+  const roleLabels: Record<string, string> = {
+    customer: t('customer'),
+    shopkeeper: t('shopkeeper'),
+    rider: t('delivery_rider'),
+    farmer: t('farmer'),
+    hotel: t('hotel_owner'),
+  };
+
+  // FIX: added try/catch so a failed Supabase call doesn't crash the app
+  const handleSendOtp = async () => {
     if (phone.replace(/\s/g, '').length < 10) return;
     setLoading(true);
-    setTimeout(() => { setStep('otp'); setLoading(false); }, 800);
+    setRoleMismatchError('');
+    try {
+      const clean = phone.replace(/\s/g, '');
+      const { data } = await (supabase as any)
+        .from('profiles')
+        .select('id')
+        .eq('phone', clean)
+        .maybeSingle();
+      setIsReturningUser(!!data);
+    } catch {
+      // If check fails, just continue — non-critical
+      setIsReturningUser(false);
+    } finally {
+      setTimeout(() => { setStep('otp'); setLoading(false); }, 800);
+    }
   };
 
   const handleVerifyOtp = async () => {
     if (otp.length < 4) return;
     setLoading(true);
+    setRoleMismatchError('');
     try {
       await signUp(phone, role);
-      toast.success('Welcome to DukkanDoor!');
+      toast.success(isReturningUser ? 'Welcome back!' : 'Welcome to DukkanDoor!');
       navigate('/setup', { replace: true });
     } catch (err: any) {
-      toast.error(err.message || t('error_retry'));
-    } finally { setLoading(false); }
+      if (err.message?.includes('already registered as')) {
+        setRoleMismatchError(err.message);
+      } else {
+        toast.error(err.message || t('error_retry'));
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const roleLabels: Record<string, string> = {
-    customer: t('customer'), shopkeeper: t('shopkeeper'), rider: t('delivery_rider'), farmer: t('farmer'), hotel: t('hotel_owner'),
+  const getSubtitle = () => {
+    if (step === 'otp') return `${t('we_sent_code')} ${phone}`;
+    if (isReturningUser) return `Welcome back! Logging in as ${roleLabels[role] || role}`;
+    return `${t('signing_up_as')} ${roleLabels[role] || role}`;
   };
 
   return (
@@ -50,31 +85,87 @@ const Auth = () => {
         </button>
         <LanguageToggle />
       </div>
+
       <div className="mt-8 animate-fade-in">
         <h1 className="font-display text-2xl font-bold">
-          {step === 'phone' ? t('enter_phone') : t('enter_otp')}
+          {step === 'phone'
+            ? (isReturningUser ? 'Welcome Back!' : t('enter_phone'))
+            : t('enter_otp')}
         </h1>
-        <p className="text-muted-foreground mt-1">
-          {step === 'phone' ? `${t('signing_up_as')} ${roleLabels[role] || role}` : `${t('we_sent_code')} ${phone}`}
-        </p>
+        <p className="text-muted-foreground mt-1">{getSubtitle()}</p>
+
         <div className="mt-8 space-y-4">
           {step === 'phone' ? (
             <>
               <div className="relative">
                 <Phone className="absolute start-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                <Input type="tel" placeholder="03XX XXXXXXX" value={phone} onChange={e => setPhone(e.target.value)} className="h-14 text-lg ps-11 rounded-xl" maxLength={11} />
+                <Input
+                  type="tel"
+                  placeholder="03XX XXXXXXX"
+                  value={phone}
+                  onChange={e => {
+                    setPhone(e.target.value);
+                    setIsReturningUser(false);
+                    setRoleMismatchError('');
+                  }}
+                  className="h-14 text-lg ps-11 rounded-xl"
+                  maxLength={11}
+                />
               </div>
-              <Button onClick={handleSendOtp} disabled={phone.replace(/\s/g, '').length < 10 || loading} className="w-full h-14 text-base font-display font-semibold rounded-xl">
+              <Button
+                onClick={handleSendOtp}
+                disabled={phone.replace(/\s/g, '').length < 10 || loading}
+                className="w-full h-14 text-base font-display font-semibold rounded-xl"
+              >
                 {loading ? t('sending') : t('send_otp')}
               </Button>
             </>
           ) : (
             <>
-              <Input type="text" placeholder="Enter 4-digit OTP" value={otp} onChange={e => setOtp(e.target.value.replace(/\D/g, '').slice(0, 4))} className="h-14 text-2xl text-center tracking-[0.5em] rounded-xl font-display" maxLength={4} />
+              <Input
+                type="text"
+                placeholder="Enter 4-digit OTP"
+                value={otp}
+                onChange={e => {
+                  setOtp(e.target.value.replace(/\D/g, '').slice(0, 4));
+                  setRoleMismatchError('');
+                }}
+                className="h-14 text-2xl text-center tracking-[0.5em] rounded-xl font-display"
+                maxLength={4}
+              />
               <p className="text-xs text-muted-foreground text-center">{t('mvp_hint')}</p>
-              <Button onClick={handleVerifyOtp} disabled={otp.length < 4 || loading} className="w-full h-14 text-base font-display font-semibold rounded-xl">
-                {loading ? t('verifying') : t('verify_continue')}
-              </Button>
+
+              {/* Role mismatch error box */}
+              {roleMismatchError ? (
+                <div className="bg-destructive/10 border border-destructive/30 rounded-xl p-4 flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-semibold text-destructive">Wrong account type</p>
+                    <p className="text-sm text-destructive/80 mt-0.5">{roleMismatchError}</p>
+                    <button
+                      onClick={() => navigate('/')}
+                      className="mt-2 text-sm font-bold text-destructive underline underline-offset-2"
+                    >
+                      ← Go back to select correct role
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <Button
+                  onClick={handleVerifyOtp}
+                  disabled={otp.length < 4 || loading}
+                  className="w-full h-14 text-base font-display font-semibold rounded-xl"
+                >
+                  {loading ? t('verifying') : t('verify_continue')}
+                </Button>
+              )}
+
+              <button
+                onClick={() => { setStep('phone'); setOtp(''); setRoleMismatchError(''); }}
+                className="w-full text-sm text-muted-foreground text-center py-2 min-h-[40px]"
+              >
+                ← Change phone number
+              </button>
             </>
           )}
         </div>
