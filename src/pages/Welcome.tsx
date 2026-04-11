@@ -20,17 +20,17 @@ const Welcome = () => {
     navigate(routes[user.role] || '/home', { replace: true });
   }, [loading, isAuthenticated, user, navigate]);
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center bg-background"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
+  if (loading) return <div className="min-h-screen flex items-center justify-center bg-blue-50"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
   if (isAuthenticated) return null;
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6">
+    <div className="min-h-screen bg-blue-50 flex flex-col items-center justify-center px-6">
       <div className="absolute top-4 end-4">
         <LanguageToggle />
       </div>
       <div className="animate-scale-in flex flex-col items-center text-center max-w-sm w-full">
-        <div className="w-24 h-24 bg-primary rounded-2xl flex items-center justify-center mb-6 shadow-lg">
-          <DoorOpen className="w-12 h-12 text-primary-foreground" />
+        <div className="w-24 h-24 bg-orange-500 rounded-2xl flex items-center justify-center mb-6 shadow-lg">
+          <DoorOpen className="w-12 h-12 text-white" />
         </div>
         <h1 className="font-display text-3xl font-bold mb-2">DukkanDoor</h1>
         <p className="text-lg font-semibold text-foreground mb-1">{t('tagline')}</p>
@@ -38,7 +38,7 @@ const Welcome = () => {
           Your village market, at your doorstep
         </p>
         <div className="w-full space-y-3">
-          <Button onClick={() => navigate('/auth', { state: { role: 'customer' } })} className="w-full h-14 text-base font-display font-semibold rounded-xl gap-3" size="lg">
+          <Button onClick={() => navigate('/auth', { state: { role: 'customer' } })} className="w-full h-14 text-base font-display font-semibold rounded-xl gap-3 bg-green-600 hover:bg-green-700" size="lg">
             <ShoppingBag className="w-5 h-5" />
             {t('i_want_to_order')}
           </Button>
