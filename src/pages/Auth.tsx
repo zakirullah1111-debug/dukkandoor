@@ -21,7 +21,7 @@ const Auth = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const role = (location.state as { role: string })?.role || 'customer';
-  const { signUp } = useAuth();
+  const { signUp, logout } = useAuth();
   const { t } = useLanguage();
 
   const [phone, setPhone] = useState('');
@@ -31,21 +31,9 @@ const Auth = () => {
   const [isReturningUser, setIsReturningUser] = useState(false);
   const [roleMismatchError, setRoleMismatchError] = useState('');
 
-  const handleSendOtp = async () => {
+  const handleSendOtp = () => {
     if (phone.replace(/\s/g, '').length < 10) return;
     setLoading(true);
-    setRoleMismatchError('');
-    try {
-      const clean = phone.replace(/\s/g, '');
-      const { data } = await (supabase as any)
-        .from('profiles')
-        .select('id')
-        .eq('phone', clean)
-        .maybeSingle();
-      setIsReturningUser(!!data);
-    } catch {
-      setIsReturningUser(false);
-    }
     setTimeout(() => { setStep('otp'); setLoading(false); }, 800);
   };
 
@@ -54,26 +42,28 @@ const Auth = () => {
     setLoading(true);
     setRoleMismatchError('');
     try {
-      const clean = phone.replace(/\s/g, '');
+      // Step 1: sign in/up as usual
+      await signUp(phone, role);
 
-      // Check existing role BEFORE calling signUp
-      const { data: existingProfile } = await (supabase as any)
+      // Step 2: now authenticated — safely read the actual role from DB
+      const clean = phone.replace(/\s/g, '');
+      const { data: profile } = await (supabase as any)
         .from('profiles')
         .select('role')
         .eq('phone', clean)
         .maybeSingle();
 
-      if (existingProfile && existingProfile.role !== role) {
-        const existingRoleLabel = roleLabels[existingProfile.role] || existingProfile.role;
+      // Step 3: if role doesn't match what user selected, log them out immediately
+      if (profile && profile.role !== role) {
+        await logout();
+        const existingRoleLabel = roleLabels[profile.role] || profile.role;
         setRoleMismatchError(
           `This number is already registered as a ${existingRoleLabel}. Please go back and select "${existingRoleLabel}" to continue.`
         );
-        setLoading(false);
         return;
       }
 
-      // No mismatch — proceed exactly as before
-      await signUp(phone, role);
+      // Step 4: all good — proceed
       toast.success(isReturningUser ? 'Welcome back!' : 'Welcome to DukkanDoor!');
       navigate('/setup', { replace: true });
     } catch (err: any) {
@@ -107,9 +97,7 @@ const Auth = () => {
       </div>
       <div className="mt-8 animate-fade-in">
         <h1 className="font-display text-2xl font-bold">
-          {step === 'phone'
-            ? (isReturningUser ? 'Welcome Back!' : t('enter_phone'))
-            : t('enter_otp')}
+          {step === 'phone' ? t('enter_phone') : t('enter_otp')}
         </h1>
         <p className="text-muted-foreground mt-1">{getSubtitle()}</p>
 
@@ -154,7 +142,6 @@ const Auth = () => {
               />
               <p className="text-xs text-muted-foreground text-center">{t('mvp_hint')}</p>
 
-              {/* Role mismatch error */}
               {roleMismatchError ? (
                 <div className="bg-destructive/10 border border-destructive/30 rounded-xl p-4 flex items-start gap-3">
                   <AlertCircle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
