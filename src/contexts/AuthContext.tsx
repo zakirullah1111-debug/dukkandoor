@@ -1,149 +1,86 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { Session } from '@supabase/supabase-js';
+import { useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { ArrowLeft, Phone } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage } from '@/contexts/LanguageContext';
+import LanguageToggle from '@/components/LanguageToggle';
+import { toast } from 'sonner';
 
-interface Profile {
-  id: string;
-  name: string;
-  phone: string;
-  role: string;
-  village: string;
-  address: string;
-  created_at?: string;
-}
+const Auth = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const role = (location.state as { role: string })?.role || 'customer';
+  const { signUp } = useAuth();
+  const { t } = useLanguage();
 
-interface AuthContextType {
-  user: Profile | null;
-  session: Session | null;
-  loading: boolean;
-  isAuthenticated: boolean;
-  signUp: (phone: string, role: string) => Promise<void>;
-  signIn: (phone: string) => Promise<void>;
-  logout: () => Promise<void>;
-  updateUser: (data: Partial<Profile>) => Promise<void>;
-  refreshUser: () => Promise<void>;
-}
+  const [phone, setPhone] = useState('');
+  const [otp, setOtp] = useState('');
+  const [step, setStep] = useState<'phone' | 'otp'>('phone');
+  const [loading, setLoading] = useState(false);
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+  const handleSendOtp = () => {
+    if (phone.replace(/\s/g, '').length < 10) return;
+    setLoading(true);
+    setTimeout(() => { setStep('otp'); setLoading(false); }, 800);
+  };
 
-const roleLabels: Record<string, string> = {
-  customer: 'Customer',
-  shopkeeper: 'Shopkeeper',
-  rider: 'Delivery Rider',
-  farmer: 'Farmer',
-  hotel: 'Hotel Owner',
-};
-
-export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [session, setSession] = useState<Session | null>(null);
-  const [user, setUser] = useState<Profile | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  const loadProfile = useCallback(async (userId: string) => {
+  const handleVerifyOtp = async () => {
+    if (otp.length < 4) return;
+    setLoading(true);
     try {
-      const { data } = await (supabase as any).from('profiles').select('*').eq('id', userId).maybeSingle();
-      if (data) setUser(data);
-      return data;
-    } catch {
-      return null;
-    }
-  }, []);
-
-  useEffect(() => {
-    let mounted = true;
-
-    supabase.auth.getSession().then(({ data: { session: s } }) => {
-      if (!mounted) return;
-      setSession(s);
-      if (s?.user) {
-        loadProfile(s.user.id).finally(() => { if (mounted) setLoading(false); });
-      } else {
-        setLoading(false);
-      }
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
-      if (!mounted) return;
-      setSession(s);
-      if (s?.user) {
-        setTimeout(() => { if (mounted) loadProfile(s.user.id); }, 0);
-      } else {
-        setUser(null);
-      }
-    });
-
-    return () => { mounted = false; subscription.unsubscribe(); };
-  }, [loadProfile]);
-
-  const signUp = async (phone: string, role: string) => {
-    const clean = phone.replace(/\s/g, '');
-    const email = `${clean}@dukkandoor.app`;
-    const { data, error } = await supabase.auth.signUp({ email, password: clean });
-
-    if (error) {
-      if (error.message?.toLowerCase().includes('already registered')) {
-        // Check what role this phone number is registered under
-        const { data: existingProfile } = await (supabase as any)
-          .from('profiles')
-          .select('role')
-          .eq('phone', clean)
-          .maybeSingle();
-
-        if (existingProfile && existingProfile.role !== role) {
-          // Role mismatch — block login and show clear error
-          // FIX: removed unused 'selectedRoleLabel' variable that caused TypeScript crash
-          const existingRoleLabel = roleLabels[existingProfile.role] || existingProfile.role;
-          throw new Error(
-            `This number is already registered as a ${existingRoleLabel}. Please go back and select "${existingRoleLabel}" to continue.`
-          );
-        }
-
-        // Same role or no profile found — proceed with normal sign in
-        return signIn(phone);
-      }
-      throw error;
-    }
-
-    if (data.user) {
-      await (supabase as any).from('profiles').insert({ id: data.user.id, phone: clean, role });
-      await loadProfile(data.user.id);
-    }
+      await signUp(phone, role);
+      toast.success('Welcome to DukkanDoor!');
+      navigate('/setup', { replace: true });
+    } catch (err: any) {
+      toast.error(err.message || t('error_retry'));
+    } finally { setLoading(false); }
   };
 
-  const signIn = async (phone: string) => {
-    const clean = phone.replace(/\s/g, '');
-    const email = `${clean}@dukkandoor.app`;
-    const { error } = await supabase.auth.signInWithPassword({ email, password: clean });
-    if (error) throw error;
-  };
-
-  const logout = async () => {
-    await supabase.auth.signOut();
-    setUser(null);
-    setSession(null);
-    localStorage.removeItem('dukkan_cart');
-  };
-
-  const updateUser = async (data: Partial<Profile>) => {
-    if (!session?.user) return;
-    const { error } = await (supabase as any).from('profiles').update(data).eq('id', session.user.id);
-    if (error) throw error;
-    setUser(prev => prev ? { ...prev, ...data } : null);
-  };
-
-  const refreshUser = async () => {
-    if (session?.user) await loadProfile(session.user.id);
+  const roleLabels: Record<string, string> = {
+    customer: t('customer'), shopkeeper: t('shopkeeper'), rider: t('delivery_rider'), farmer: t('farmer'), hotel: t('hotel_owner'),
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, isAuthenticated: !!session, signUp, signIn, logout, updateUser, refreshUser }}>
-      {children}
-    </AuthContext.Provider>
+    <div className="min-h-screen bg-background px-6 pt-4">
+      <div className="flex items-center justify-between">
+        <button onClick={() => navigate(-1)} className="min-h-[44px] min-w-[44px] flex items-center justify-center -ms-2">
+          <ArrowLeft className="w-6 h-6" />
+        </button>
+        <LanguageToggle />
+      </div>
+      <div className="mt-8 animate-fade-in">
+        <h1 className="font-display text-2xl font-bold">
+          {step === 'phone' ? t('enter_phone') : t('enter_otp')}
+        </h1>
+        <p className="text-muted-foreground mt-1">
+          {step === 'phone' ? `${t('signing_up_as')} ${roleLabels[role] || role}` : `${t('we_sent_code')} ${phone}`}
+        </p>
+        <div className="mt-8 space-y-4">
+          {step === 'phone' ? (
+            <>
+              <div className="relative">
+                <Phone className="absolute start-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                <Input type="tel" placeholder="03XX XXXXXXX" value={phone} onChange={e => setPhone(e.target.value)} className="h-14 text-lg ps-11 rounded-xl" maxLength={11} />
+              </div>
+              <Button onClick={handleSendOtp} disabled={phone.replace(/\s/g, '').length < 10 || loading} className="w-full h-14 text-base font-display font-semibold rounded-xl">
+                {loading ? t('sending') : t('send_otp')}
+              </Button>
+            </>
+          ) : (
+            <>
+              <Input type="text" placeholder="Enter 4-digit OTP" value={otp} onChange={e => setOtp(e.target.value.replace(/\D/g, '').slice(0, 4))} className="h-14 text-2xl text-center tracking-[0.5em] rounded-xl font-display" maxLength={4} />
+              <p className="text-xs text-muted-foreground text-center">{t('mvp_hint')}</p>
+              <Button onClick={handleVerifyOtp} disabled={otp.length < 4 || loading} className="w-full h-14 text-base font-display font-semibold rounded-xl">
+                {loading ? t('verifying') : t('verify_continue')}
+              </Button>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
   );
 };
 
-export const useAuth = () => {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
-  return ctx;
-};
+export default Auth;
