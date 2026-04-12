@@ -495,6 +495,7 @@ const RiderDashboard = () => {
           )}
         </div>
       )}
+      </div>
     </div>
   );
 };

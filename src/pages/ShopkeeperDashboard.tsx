@@ -230,6 +230,7 @@ const ShopkeeperDashboard = () => {
           </div>
         </SheetContent>
       </Sheet>
+      </div>
     </div>
   );
 };

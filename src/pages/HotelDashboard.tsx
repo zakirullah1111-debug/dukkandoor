@@ -134,6 +134,7 @@ const HotelDashboard = () => {
           {t('add_dish')}
         </button>
       </div>
+      </div>
     </div>
   );
 };
