@@ -23,25 +23,35 @@ const RiderProfile = () => {
   const [profile, setProfile] = useState<any>(null);
   const [reviews, setReviews] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [reportReason, setReportReason] = useState('');
   const [reportDesc, setReportDesc] = useState('');
   const [reporting, setReporting] = useState(false);
 
   useEffect(() => {
-    if (!riderId) return;
-    const fetch = async () => {
-      const [riderRes, profileRes, reviewsRes] = await Promise.all([
-        (supabase as any).from('riders').select('*').eq('user_id', riderId).maybeSingle(),
-        (supabase as any).from('profiles').select('*').eq('id', riderId).single(),
-        (supabase as any).from('ratings').select('*, profiles!ratings_rated_by_fkey(name)').eq('rider_id', riderId).order('created_at', { ascending: false }),
-      ]);
-      if (riderRes.data) setRider(riderRes.data);
-      if (profileRes.data) setProfile(profileRes.data);
-      if (reviewsRes.data) setReviews(reviewsRes.data);
-      setLoading(false);
+    if (!riderId) { setLoading(false); return; }
+    const load = async () => {
+      try {
+        // FIX: was .single() which throws if not found — now .maybeSingle() returns null safely
+        const [riderRes, profileRes, reviewsRes] = await Promise.all([
+          (supabase as any).from('riders').select('*').eq('user_id', riderId).maybeSingle(),
+          (supabase as any).from('profiles').select('*').eq('id', riderId).maybeSingle(),
+          (supabase as any).from('ratings')
+            .select('*, profiles!ratings_rated_by_fkey(name)')
+            .eq('rider_id', riderId)
+            .order('created_at', { ascending: false }),
+        ]);
+        if (riderRes.data) setRider(riderRes.data);
+        if (profileRes.data) setProfile(profileRes.data);
+        if (reviewsRes.data) setReviews(reviewsRes.data);
+      } catch {
+        setError(true);
+      } finally {
+        setLoading(false);
+      }
     };
-    fetch();
+    load();
   }, [riderId]);
 
   const submitReport = async () => {
@@ -62,8 +72,19 @@ const RiderProfile = () => {
     finally { setReporting(false); }
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
-  if (!rider || !profile) return <div className="p-6 text-center">Rider not found</div>;
+  if (loading) return (
+    <div className="min-h-screen flex items-center justify-center">
+      <Loader2 className="w-8 h-8 animate-spin text-primary" />
+    </div>
+  );
+
+  if (error || !rider || !profile) return (
+    <div className="min-h-screen flex flex-col items-center justify-center gap-4 px-6">
+      <p className="text-lg font-display font-bold">Rider not found</p>
+      <p className="text-sm text-muted-foreground text-center">This rider profile doesn't exist or may have been removed.</p>
+      <Button onClick={() => navigate(-1)} variant="outline" className="rounded-xl">Go Back</Button>
+    </div>
+  );
 
   const tier = tierInfo[rider.tier] || tierInfo.bronze;
 
@@ -83,7 +104,7 @@ const RiderProfile = () => {
           {rider.profile_photo_url ? (
             <img src={rider.profile_photo_url} alt="" className="w-full h-full object-cover" />
           ) : (
-            <span className="font-display text-3xl font-bold text-primary">{profile.name?.charAt(0)}</span>
+            <span className="font-display text-3xl font-bold text-primary">{profile.name?.charAt(0) || '?'}</span>
           )}
         </div>
         <div className="flex items-center gap-2">
@@ -98,17 +119,17 @@ const RiderProfile = () => {
       <div className="grid grid-cols-3 gap-3 mb-6">
         <div className="bg-card rounded-xl border border-border p-3 text-center">
           <Star className="w-5 h-5 mx-auto text-warning fill-warning mb-1" />
-          <p className="font-display font-bold text-lg">{Number(rider.average_rating).toFixed(1)}</p>
+          <p className="font-display font-bold text-lg">{Number(rider.average_rating || 0).toFixed(1)}</p>
           <p className="text-[10px] text-muted-foreground">{reviews.length} reviews</p>
         </div>
         <div className="bg-card rounded-xl border border-border p-3 text-center">
           <Bike className="w-5 h-5 mx-auto text-primary mb-1" />
-          <p className="font-display font-bold text-lg">{rider.total_deliveries}</p>
+          <p className="font-display font-bold text-lg">{rider.total_deliveries || 0}</p>
           <p className="text-[10px] text-muted-foreground">Deliveries</p>
         </div>
         <div className="bg-card rounded-xl border border-border p-3 text-center">
           <span className="text-xl block mb-0.5">{rider.vehicle_type === 'Motorcycle' ? '🏍️' : '🚲'}</span>
-          <p className="font-display font-bold text-sm">{rider.vehicle_type}</p>
+          <p className="font-display font-bold text-sm">{rider.vehicle_type || 'N/A'}</p>
           <p className="text-[10px] text-muted-foreground">Vehicle</p>
         </div>
       </div>
