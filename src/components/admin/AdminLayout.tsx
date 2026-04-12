@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Loader2, LayoutDashboard, Package, Users, Store, Bike, MapPin, AlertTriangle, Bell, BarChart3, Settings, LogOut, Menu, X, Monitor } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
+import dukkandoorLogo from '@/assets/dukkandoor-logo.png';
 
 const NAV_ITEMS = [
   { label: 'Dashboard', icon: LayoutDashboard, path: '/admin/dashboard' },
@@ -92,7 +93,11 @@ const AdminLayout = () => {
         isMobile && 'mt-7'
       )}>
         <div className="p-4 flex items-center justify-between border-b border-white/10">
-          {sidebarOpen && <span className="font-bold text-sm">🚪 DukkanDoor</span>}
+          {sidebarOpen && (
+            <button onClick={() => navigate('/admin/dashboard')} className="flex items-center gap-2 active:scale-95 transition-transform">
+              <img src={dukkandoorLogo} alt="DukkanDoor" className="h-7 w-auto brightness-0 invert" />
+            </button>
+          )}
           <button onClick={() => setSidebarOpen(!sidebarOpen)} className="text-white/70 hover:text-white">
             {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
