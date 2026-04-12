@@ -64,15 +64,10 @@ const Welcome = () => {
         {/* Hero section */}
         <div className="flex flex-col items-center text-center mb-8 animate-fade-in">
           {/* Logo */}
-          <div style={{
-            width: '88px', height: '88px', borderRadius: '24px',
-            background: 'linear-gradient(135deg, #ea580c 0%, #c2410c 100%)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          <img src={dukkandoorLogo} alt="DukkanDoor Logo" style={{
+            width: '160px', height: 'auto',
             marginBottom: '20px',
-            boxShadow: '0 8px 32px rgba(234,88,12,0.25), 0 2px 8px rgba(234,88,12,0.15)',
-          }}>
-            <DoorOpen style={{ width: '44px', height: '44px', color: 'white' }} />
-          </div>
+          }} />
 
           {/* App name */}
           <h1 style={{
