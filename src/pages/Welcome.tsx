@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { DoorOpen, ShoppingBag, Bike, Wheat, UtensilsCrossed } from 'lucide-react';
+import { ShoppingBag, Bike, Wheat, UtensilsCrossed, DoorOpen } from 'lucide-react';
+import dukkandoorLogo from '@/assets/dukkandoor-logo.png';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import LanguageToggle from '@/components/LanguageToggle';
