@@ -4,7 +4,6 @@ import { ToggleLeft, ToggleRight, DollarSign, Bike, Loader2, UserCircle, Camera,
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import LanguageToggle from '@/components/LanguageToggle';
-import LogoHeader from '@/components/LogoHeader';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Progress } from '@/components/ui/progress';
@@ -294,11 +293,7 @@ const RiderDashboard = () => {
     : 0;
 
   return (
-    <div className="min-h-screen bg-background max-w-lg mx-auto pb-6">
-      <div className="sticky top-0 z-30 bg-background border-b border-border px-4 py-2">
-        <LogoHeader />
-      </div>
-      <div className="px-4 pt-4">
+    <div className="min-h-screen bg-background max-w-lg mx-auto px-4 pt-4 pb-6">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="font-display text-xl font-bold">{t('rider_dashboard')}</h1>
@@ -495,7 +490,6 @@ const RiderDashboard = () => {
           )}
         </div>
       )}
-      </div>
     </div>
   );
 };

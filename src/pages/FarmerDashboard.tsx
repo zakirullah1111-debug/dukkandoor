@@ -6,7 +6,6 @@ import { Input } from '@/components/ui/input';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import LanguageToggle from '@/components/LanguageToggle';
-import LogoHeader from '@/components/LogoHeader';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
@@ -53,14 +52,12 @@ const FarmerDashboard = () => {
 
   return (
     <div className="min-h-screen bg-background max-w-lg mx-auto pb-20">
-      <div className="sticky top-0 z-30 bg-background border-b border-border px-4 py-2">
-        <LogoHeader />
-      </div>
       {activeTab === 'home' && (
         <div className="px-4 pt-4">
           {/* Header */}
           <div className="flex items-center justify-between mb-5">
             <div>
+              <p className="text-lg font-display font-bold">DukkanDoor 🌾</p>
               <p className="text-base font-semibold mt-0.5">{t('greeting')} {user?.name}!</p>
             </div>
             <div className="flex items-center gap-2">
