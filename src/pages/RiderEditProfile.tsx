@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Camera, Loader2 } from 'lucide-react';
+import { ArrowLeft, Camera, Loader2, AlertCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -25,23 +24,32 @@ const RiderEditProfile = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [reviews, setReviews] = useState<any[]>([]);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
     if (!session?.user) return;
-    const fetch = async () => {
-      const [riderRes, reviewsRes] = await Promise.all([
-        (supabase as any).from('riders').select('*').eq('user_id', session.user.id).maybeSingle(),
-        (supabase as any).from('ratings').select('*, profiles!ratings_rated_by_fkey(name)').eq('rider_id', session.user.id).order('created_at', { ascending: false }),
-      ]);
-      if (riderRes.data) {
-        setRider(riderRes.data);
-        setBio(riderRes.data.bio || '');
-        setPhotoPreview(riderRes.data.profile_photo_url || '');
+    const load = async () => {
+      try {
+        const [riderRes, reviewsRes] = await Promise.all([
+          (supabase as any).from('riders').select('*').eq('user_id', session.user.id).maybeSingle(),
+          (supabase as any).from('ratings')
+            .select('*, profiles!ratings_rated_by_fkey(name)')
+            .eq('rider_id', session.user.id)
+            .order('created_at', { ascending: false }),
+        ]);
+        if (riderRes.data) {
+          setRider(riderRes.data);
+          setBio(riderRes.data.bio || '');
+          setPhotoPreview(riderRes.data.profile_photo_url || '');
+        }
+        if (reviewsRes.data) setReviews(reviewsRes.data);
+      } catch {
+        setLoadError(true);
+      } finally {
+        setLoading(false);
       }
-      if (reviewsRes.data) setReviews(reviewsRes.data);
-      setLoading(false);
     };
-    fetch();
+    load();
   }, [session]);
 
   const handleSave = async () => {
@@ -56,17 +64,44 @@ const RiderEditProfile = () => {
         const { data } = supabase.storage.from('rider-photos').getPublicUrl(path);
         photoUrl = data.publicUrl;
       }
-      await (supabase as any).from('riders').update({ bio, profile_photo_url: photoUrl }).eq('user_id', session.user.id);
+      await (supabase as any).from('riders')
+        .update({ bio, profile_photo_url: photoUrl })
+        .eq('user_id', session.user.id);
       toast.success('Profile updated!');
       navigate(-1);
-    } catch { toast.error('Failed to save'); }
-    finally { setSaving(false); }
+    } catch {
+      toast.error('Failed to save. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
+  if (loading) return (
+    <div className="min-h-screen flex items-center justify-center">
+      <Loader2 className="w-8 h-8 animate-spin text-primary" />
+    </div>
+  );
 
-  const tierData = tierThresholds.find(t => (rider?.total_deliveries || 0) >= t.min && (rider?.total_deliveries || 0) <= t.max) || tierThresholds[0];
-  const progressToNext = tierData.nextAt ? ((rider?.total_deliveries || 0) / tierData.nextAt) * 100 : 100;
+  // FIX: show friendly error if rider record missing instead of broken blank UI
+  if (loadError || !rider) return (
+    <div className="min-h-screen flex flex-col items-center justify-center gap-4 px-6">
+      <AlertCircle className="w-12 h-12 text-destructive" />
+      <p className="font-display text-lg font-bold text-center">Profile not found</p>
+      <p className="text-sm text-muted-foreground text-center">
+        Your rider profile could not be loaded. Please try again.
+      </p>
+      <Button onClick={() => navigate(-1)} variant="outline" className="rounded-xl h-12 px-8">
+        Go Back
+      </Button>
+    </div>
+  );
+
+  const tierData = tierThresholds.find(
+    t => (rider?.total_deliveries || 0) >= t.min && (rider?.total_deliveries || 0) <= t.max
+  ) || tierThresholds[0];
+  const progressToNext = tierData.nextAt
+    ? Math.min(((rider?.total_deliveries || 0) / tierData.nextAt) * 100, 100)
+    : 100;
   const remaining = tierData.nextAt ? tierData.nextAt - (rider?.total_deliveries || 0) : 0;
 
   return (
@@ -96,25 +131,39 @@ const RiderEditProfile = () => {
             if (f) { setPhotoFile(f); setPhotoPreview(URL.createObjectURL(f)); }
           }} />
         </label>
+        <p className="text-xs text-muted-foreground mt-2">Tap to change photo</p>
       </div>
 
       {/* Bio */}
       <div className="mb-6">
         <label className="text-sm font-medium mb-1.5 block">Bio</label>
-        <Textarea value={bio} onChange={e => setBio(e.target.value)} placeholder="e.g., Fast & reliable, 2 years experience" className="rounded-xl" maxLength={200} />
+        <Textarea
+          value={bio}
+          onChange={e => setBio(e.target.value)}
+          placeholder="e.g., Fast & reliable, 2 years experience"
+          className="rounded-xl"
+          maxLength={200}
+        />
+        <p className="text-xs text-muted-foreground mt-1 text-right">{bio.length}/200</p>
       </div>
 
       {/* Tier Progress */}
       <div className="bg-card rounded-xl border border-border p-4 mb-6">
         <h3 className="font-display font-semibold text-sm mb-2">Tier Progress</h3>
         <div className="flex items-center gap-2 mb-2">
-          <span className="text-lg">{tierData.tier === 'gold' ? '🥇' : tierData.tier === 'silver' ? '🥈' : '🥉'}</span>
+          <span className="text-lg">
+            {tierData.tier === 'gold' ? '🥇' : tierData.tier === 'silver' ? '🥈' : '🥉'}
+          </span>
           <span className="font-bold text-sm capitalize">{tierData.tier}</span>
-          {tierData.next && <span className="text-xs text-muted-foreground">→ {tierData.next}</span>}
+          {tierData.next && (
+            <span className="text-xs text-muted-foreground">→ {tierData.next}</span>
+          )}
         </div>
         <Progress value={progressToNext} className="h-2 mb-2" />
         <p className="text-xs text-muted-foreground">
-          {tierData.next ? `${remaining} more deliveries to reach ${tierData.next.charAt(0).toUpperCase() + tierData.next.slice(1)} ${tierData.next === 'silver' ? '🥈' : '🥇'}` : 'You\'ve reached the highest tier! 🎉'}
+          {tierData.next
+            ? `${remaining} more deliveries to reach ${tierData.next.charAt(0).toUpperCase() + tierData.next.slice(1)} ${tierData.next === 'silver' ? '🥈' : '🥇'}`
+            : "You've reached the highest tier! 🎉"}
         </p>
       </div>
 
@@ -139,12 +188,18 @@ const RiderEditProfile = () => {
               {[1,2,3,4,5].map(s => (
                 <span key={s} className={`text-xs ${s <= r.rating ? 'text-warning' : 'text-muted'}`}>★</span>
               ))}
-              <span className="text-[10px] text-muted-foreground ml-auto">{new Date(r.created_at).toLocaleDateString()}</span>
+              <span className="text-[10px] text-muted-foreground ml-auto">
+                {new Date(r.created_at).toLocaleDateString()}
+              </span>
             </div>
-            {(r.comment || r.review_text) && <p className="text-sm text-muted-foreground">{r.review_text || r.comment}</p>}
+            {(r.comment || r.review_text) && (
+              <p className="text-sm text-muted-foreground">{r.review_text || r.comment}</p>
+            )}
           </div>
         ))}
-        {reviews.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No reviews yet</p>}
+        {reviews.length === 0 && (
+          <p className="text-sm text-muted-foreground text-center py-4">No reviews yet</p>
+        )}
       </div>
 
       <Button onClick={handleSave} disabled={saving} className="w-full h-14 rounded-xl font-display font-semibold">
