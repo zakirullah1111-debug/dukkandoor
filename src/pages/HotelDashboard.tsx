@@ -4,6 +4,7 @@ import { ToggleLeft, ToggleRight, DollarSign, Package, ChevronRight, Loader2, Pl
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import LanguageToggle from '@/components/LanguageToggle';
+import LogoHeader from '@/components/LogoHeader';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -62,7 +63,11 @@ const HotelDashboard = () => {
   if (loading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
 
   return (
-    <div className="min-h-screen bg-background max-w-lg mx-auto px-4 pt-4 pb-6">
+    <div className="min-h-screen bg-background max-w-lg mx-auto pb-6">
+      <div className="sticky top-0 z-30 bg-background border-b border-border px-4 py-2">
+        <LogoHeader />
+      </div>
+      <div className="px-4 pt-4">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           {hotel?.logo_url ? (
@@ -128,6 +133,7 @@ const HotelDashboard = () => {
           <Plus className="w-5 h-5" />
           {t('add_dish')}
         </button>
+      </div>
       </div>
     </div>
   );
