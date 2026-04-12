@@ -28,7 +28,6 @@ const RiderDashboard = () => {
   const [todayEarnings, setTodayEarnings] = useState(0);
   const [weekEarnings, setWeekEarnings] = useState(0);
   const [lastWeekEarnings, setLastWeekEarnings] = useState(0);
-  const [weekDeliveries, setWeekDeliveries] = useState(0);
   // Chat
   const [showChat, setShowChat] = useState(false);
   // Location
@@ -36,15 +35,24 @@ const RiderDashboard = () => {
   const [myLng, setMyLng] = useState<number | null>(null);
   const watchIdRef = useRef<number | null>(null);
 
+  // FIX: refs to avoid stale closures inside realtime callback
+  const isOnlineRef = useRef(isOnline);
+  const activeDeliveryRef = useRef(activeDelivery);
+  useEffect(() => { isOnlineRef.current = isOnline; }, [isOnline]);
+  useEffect(() => { activeDeliveryRef.current = activeDelivery; }, [activeDelivery]);
+
   // GPS location broadcasting
   useEffect(() => {
     if (!activeDelivery || !session?.user || !isOnline) {
-      // Stop broadcasting
       if (watchIdRef.current !== null) {
         navigator.geolocation.clearWatch(watchIdRef.current);
         watchIdRef.current = null;
-        // Clear location in DB
-        (supabase as any).from('riders').update({ current_lat: null, current_lng: null }).eq('user_id', session?.user?.id);
+        // FIX: guard against null session before updating DB
+        if (session?.user?.id) {
+          (supabase as any).from('riders')
+            .update({ current_lat: null, current_lng: null })
+            .eq('user_id', session.user.id);
+        }
       }
       return;
     }
@@ -79,55 +87,87 @@ const RiderDashboard = () => {
   useEffect(() => {
     if (!session?.user) return;
     const init = async () => {
-      let { data: rider } = await (supabase as any).from('riders').select('*').eq('user_id', session.user.id).maybeSingle();
-      if (!rider) {
-        const { data: newRider } = await (supabase as any).from('riders').insert({ user_id: session.user.id, is_available: false, vehicle_type: 'Motorcycle' }).select().single();
-        rider = newRider;
+      try {
+        let { data: rider } = await (supabase as any).from('riders').select('*').eq('user_id', session.user.id).maybeSingle();
+        if (!rider) {
+          const { data: newRider } = await (supabase as any).from('riders')
+            .insert({ user_id: session.user.id, is_available: false, vehicle_type: 'Motorcycle' })
+            .select().single();
+          rider = newRider;
+        }
+        setRiderRecord(rider);
+        setIsOnline(rider?.is_available || false);
+
+        const { data: activeOrder } = await (supabase as any).from('orders')
+          .select('*, shops(shop_name, address)')
+          .eq('rider_id', session.user.id)
+          .in('status', ['confirmed', 'picked_up'])
+          .maybeSingle();
+        if (activeOrder) setActiveDelivery(activeOrder);
+
+        if (rider?.is_available && !activeOrder) {
+          const { data: available } = await (supabase as any).from('orders')
+            .select('*, shops(shop_name, address), order_items(id)')
+            .eq('status', 'confirmed').is('rider_id', null);
+          if (available) setAvailableOrders(available);
+        }
+
+        const today = new Date().toISOString().split('T')[0];
+        const { data: todayOrders } = await (supabase as any).from('orders')
+          .select('delivery_fee')
+          .eq('rider_id', session.user.id)
+          .eq('status', 'delivered')
+          .gte('created_at', today);
+        setTodayDeliveries(todayOrders?.length || 0);
+        setTodayEarnings(todayOrders?.reduce((s: number, o: any) => s + Number(o.delivery_fee), 0) || 0);
+
+        const weekStart = new Date();
+        weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+        const { data: weekOrders } = await (supabase as any).from('orders')
+          .select('delivery_fee')
+          .eq('rider_id', session.user.id)
+          .eq('status', 'delivered')
+          .gte('created_at', weekStart.toISOString());
+        setWeekEarnings(weekOrders?.reduce((s: number, o: any) => s + Number(o.delivery_fee), 0) || 0);
+
+        const lastWeekStart = new Date(weekStart);
+        lastWeekStart.setDate(lastWeekStart.getDate() - 7);
+        const { data: lwOrders } = await (supabase as any).from('orders')
+          .select('delivery_fee')
+          .eq('rider_id', session.user.id)
+          .eq('status', 'delivered')
+          .gte('created_at', lastWeekStart.toISOString())
+          .lt('created_at', weekStart.toISOString());
+        setLastWeekEarnings(lwOrders?.reduce((s: number, o: any) => s + Number(o.delivery_fee), 0) || 0);
+
+      } catch {
+        toast.error(t('error_retry'));
+      } finally {
+        setLoading(false);
       }
-      setRiderRecord(rider);
-      setIsOnline(rider?.is_available || false);
-
-      const { data: activeOrder } = await (supabase as any).from('orders')
-        .select('*, shops(shop_name, address)')
-        .eq('rider_id', session.user.id).in('status', ['confirmed', 'picked_up']).maybeSingle();
-      if (activeOrder) setActiveDelivery(activeOrder);
-
-      if (rider?.is_available && !activeOrder) {
-        const { data: available } = await (supabase as any).from('orders')
-          .select('*, shops(shop_name, address), order_items(id)')
-          .eq('status', 'confirmed').is('rider_id', null);
-        if (available) setAvailableOrders(available);
-      }
-
-      const today = new Date().toISOString().split('T')[0];
-      const { data: todayOrders } = await (supabase as any).from('orders').select('delivery_fee').eq('rider_id', session.user.id).eq('status', 'delivered').gte('created_at', today);
-      setTodayDeliveries(todayOrders?.length || 0);
-      setTodayEarnings(todayOrders?.reduce((s: number, o: any) => s + Number(o.delivery_fee), 0) || 0);
-
-      const weekStart = new Date(); weekStart.setDate(weekStart.getDate() - weekStart.getDay());
-      const { data: weekOrders } = await (supabase as any).from('orders').select('delivery_fee').eq('rider_id', session.user.id).eq('status', 'delivered').gte('created_at', weekStart.toISOString());
-      setWeekDeliveries(weekOrders?.length || 0);
-      setWeekEarnings(weekOrders?.reduce((s: number, o: any) => s + Number(o.delivery_fee), 0) || 0);
-
-      const lastWeekStart = new Date(weekStart); lastWeekStart.setDate(lastWeekStart.getDate() - 7);
-      const { data: lwOrders } = await (supabase as any).from('orders').select('delivery_fee').eq('rider_id', session.user.id).eq('status', 'delivered').gte('created_at', lastWeekStart.toISOString()).lt('created_at', weekStart.toISOString());
-      setLastWeekEarnings(lwOrders?.reduce((s: number, o: any) => s + Number(o.delivery_fee), 0) || 0);
-
-      setLoading(false);
     };
     init();
 
     const channel = supabase.channel('rider-orders')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, (payload: any) => {
         const order = payload.new;
+        // FIX: use refs instead of stale state values
         if (payload.eventType === 'UPDATE') {
-          if (order.rider_id && order.rider_id !== session.user.id) setAvailableOrders(prev => prev.filter(o => o.id !== order.id));
-          if (order.rider_id === session.user.id) setActiveDelivery((prev: any) => prev?.id === order.id ? { ...prev, ...order } : prev);
+          if (order.rider_id && order.rider_id !== session.user.id) {
+            setAvailableOrders(prev => prev.filter(o => o.id !== order.id));
+          }
+          if (order.rider_id === session.user.id) {
+            setActiveDelivery((prev: any) => prev?.id === order.id ? { ...prev, ...order } : prev);
+          }
         }
-        if (payload.eventType === 'INSERT' || (payload.eventType === 'UPDATE' && order.status === 'confirmed' && !order.rider_id)) {
-          if (isOnline && !activeDelivery) {
+        if (payload.eventType === 'INSERT' ||
+          (payload.eventType === 'UPDATE' && order.status === 'confirmed' && !order.rider_id)) {
+          // FIX: read from refs — not stale captured state
+          if (isOnlineRef.current && !activeDeliveryRef.current) {
             toast('🔔 ' + t('new_order_available'));
-            (supabase as any).from('orders').select('*, shops(shop_name, address), order_items(id)').eq('status', 'confirmed').is('rider_id', null)
+            (supabase as any).from('orders')
+              .select('*, shops(shop_name, address), order_items(id)')
+              .eq('status', 'confirmed').is('rider_id', null)
               .then(({ data }: any) => { if (data) setAvailableOrders(data); });
           }
         }
@@ -142,18 +182,27 @@ const RiderDashboard = () => {
     setIsOnline(newStatus);
     toast.success(newStatus ? t('go_online') : t('go_offline'));
     if (newStatus && !activeDelivery) {
-      const { data } = await (supabase as any).from('orders').select('*, shops(shop_name, address), order_items(id)').eq('status', 'confirmed').is('rider_id', null);
+      const { data } = await (supabase as any).from('orders')
+        .select('*, shops(shop_name, address), order_items(id)')
+        .eq('status', 'confirmed').is('rider_id', null);
       if (data) setAvailableOrders(data);
-    } else { setAvailableOrders([]); }
+    } else {
+      setAvailableOrders([]);
+    }
   };
 
   const acceptOrder = async (orderId: string) => {
     setAccepting(orderId);
     try {
       const { data, error } = await (supabase as any).from('orders')
-        .update({ rider_id: session?.user.id }).eq('id', orderId).eq('status', 'confirmed').is('rider_id', null)
+        .update({ rider_id: session?.user.id })
+        .eq('id', orderId).eq('status', 'confirmed').is('rider_id', null)
         .select('*, shops(shop_name, address)').single();
-      if (error || !data) { toast.error(t('error_retry')); setAvailableOrders(prev => prev.filter(o => o.id !== orderId)); return; }
+      if (error || !data) {
+        toast.error(t('error_retry'));
+        setAvailableOrders(prev => prev.filter(o => o.id !== orderId));
+        return;
+      }
       setActiveDelivery(data);
       setAvailableOrders([]);
       toast.success(t('accept_order'));
@@ -173,20 +222,41 @@ const RiderDashboard = () => {
         if (upErr) throw upErr;
         const { data: urlData } = supabase.storage.from('delivery-proofs').getPublicUrl(path);
 
-        await (supabase as any).from('orders').update({ status: 'delivered', delivery_photo_url: urlData.publicUrl }).eq('id', activeDelivery.id);
+        await (supabase as any).from('orders')
+          .update({ status: 'delivered', delivery_photo_url: urlData.publicUrl })
+          .eq('id', activeDelivery.id);
+
         const fee = Number(activeDelivery.delivery_fee) || 50;
         const newDeliveries = (riderRecord?.total_deliveries || 0) + 1;
         await (supabase as any).from('riders').update({
-          total_earnings: (riderRecord?.total_earnings || 0) + fee, total_deliveries: newDeliveries,
-          current_lat: null, current_lng: null,
+          total_earnings: (riderRecord?.total_earnings || 0) + fee,
+          total_deliveries: newDeliveries,
+          current_lat: null,
+          current_lng: null,
         }).eq('user_id', session?.user.id);
-        setRiderRecord((prev: any) => prev ? { ...prev, total_earnings: (prev.total_earnings || 0) + fee, total_deliveries: newDeliveries } : prev);
-        setActiveDelivery(null); setDeliveryPhoto(null); setDeliveryPhotoPreview('');
-        setTodayDeliveries(prev => prev + 1); setTodayEarnings(prev => prev + fee);
+
+        setRiderRecord((prev: any) => prev ? {
+          ...prev,
+          total_earnings: (prev.total_earnings || 0) + fee,
+          total_deliveries: newDeliveries,
+        } : prev);
+
+        setActiveDelivery(null);
+        setDeliveryPhoto(null);
+        setDeliveryPhotoPreview('');
+        setTodayDeliveries(prev => prev + 1);
+        setTodayEarnings(prev => prev + fee);
         toast.success(t('delivery_completed'));
-        if (todayDeliveries + 1 >= dailyGoal) toast(t('daily_goal_reached'), { duration: 5000 });
-        const { data } = await (supabase as any).from('orders').select('*, shops(shop_name, address), order_items(id)').eq('status', 'confirmed').is('rider_id', null);
+
+        if (todayDeliveries + 1 >= dailyGoal) {
+          toast(t('daily_goal_reached'), { duration: 5000 });
+        }
+
+        const { data } = await (supabase as any).from('orders')
+          .select('*, shops(shop_name, address), order_items(id)')
+          .eq('status', 'confirmed').is('rider_id', null);
         if (data) setAvailableOrders(data);
+
       } catch { toast.error(t('error_retry')); }
       finally { setDelivering(false); }
     } else {
@@ -198,15 +268,29 @@ const RiderDashboard = () => {
     }
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
+  if (loading) return (
+    <div className="min-h-screen flex items-center justify-center">
+      <Loader2 className="w-8 h-8 animate-spin text-primary" />
+    </div>
+  );
 
-  // Chat overlay
   if (showChat && activeDelivery) {
-    return <ChatWindow orderId={activeDelivery.id} receiverId={activeDelivery.customer_id} receiverName="Customer" receiverRole="Customer" orderStatus={activeDelivery.status} onClose={() => setShowChat(false)} />;
+    return (
+      <ChatWindow
+        orderId={activeDelivery.id}
+        receiverId={activeDelivery.customer_id}
+        receiverName="Customer"
+        receiverRole="Customer"
+        orderStatus={activeDelivery.status}
+        onClose={() => setShowChat(false)}
+      />
+    );
   }
 
   const goalProgress = Math.min((todayDeliveries / dailyGoal) * 100, 100);
-  const weekChange = lastWeekEarnings > 0 ? Math.round(((weekEarnings - lastWeekEarnings) / lastWeekEarnings) * 100) : 0;
+  const weekChange = lastWeekEarnings > 0
+    ? Math.round(((weekEarnings - lastWeekEarnings) / lastWeekEarnings) * 100)
+    : 0;
 
   return (
     <div className="min-h-screen bg-background max-w-lg mx-auto px-4 pt-4 pb-6">
@@ -217,14 +301,19 @@ const RiderDashboard = () => {
         </div>
         <div className="flex items-center gap-2">
           <LanguageToggle />
-          <button onClick={() => navigate('/rider/edit-profile')} className="p-2 text-muted-foreground"><UserCircle className="w-5 h-5" /></button>
+          <button onClick={() => navigate('/rider/edit-profile')} className="p-2 text-muted-foreground">
+            <UserCircle className="w-5 h-5" />
+          </button>
           <button onClick={() => navigate('/settings')} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
             <Settings className="w-5 h-5 text-muted-foreground" />
           </button>
         </div>
       </div>
 
-      <button onClick={toggleOnline} className={`w-full rounded-xl p-5 flex items-center justify-between mb-4 min-h-[64px] ${isOnline ? 'bg-accent text-accent-foreground' : 'bg-muted'}`}>
+      <button
+        onClick={toggleOnline}
+        className={`w-full rounded-xl p-5 flex items-center justify-between mb-4 min-h-[64px] ${isOnline ? 'bg-accent text-accent-foreground' : 'bg-muted'}`}
+      >
         <div className="flex items-center gap-3">
           <Bike className="w-6 h-6" />
           <span className="font-display font-bold text-lg">{isOnline ? t('go_online') : t('go_offline')}</span>
@@ -232,7 +321,6 @@ const RiderDashboard = () => {
         {isOnline ? <ToggleRight className="w-10 h-10" /> : <ToggleLeft className="w-10 h-10" />}
       </button>
 
-      {/* Location sharing indicator */}
       {activeDelivery && isOnline && (
         <div className="bg-accent/10 rounded-xl p-2 mb-3 text-center">
           <p className="text-xs text-accent font-medium">{t('location_shared')}</p>
@@ -265,7 +353,12 @@ const RiderDashboard = () => {
           <TrendingUp className="w-5 h-5 mx-auto text-primary mb-1" />
           <p className="font-display font-bold text-lg">Rs {Math.round(weekEarnings)}</p>
           <p className="text-[10px] text-muted-foreground">
-            {t('this_week')} {weekChange !== 0 && <span className={weekChange > 0 ? 'text-accent' : 'text-destructive'}>({weekChange > 0 ? '↑' : '↓'}{Math.abs(weekChange)}%)</span>}
+            {t('this_week')}{' '}
+            {weekChange !== 0 && (
+              <span className={weekChange > 0 ? 'text-accent' : 'text-destructive'}>
+                ({weekChange > 0 ? '↑' : '↓'}{Math.abs(weekChange)}%)
+              </span>
+            )}
           </p>
         </div>
       </div>
@@ -275,14 +368,14 @@ const RiderDashboard = () => {
         <p className="text-xs text-muted-foreground">{t('total_lifetime')} • {riderRecord?.total_deliveries || 0} {t('deliveries')}</p>
       </div>
 
-      {/* Peak Hours */}
       {isOnline && (
         <div className="bg-card rounded-xl border border-border p-3 mb-4 flex items-center gap-3">
           <Flame className="w-5 h-5 text-primary shrink-0" />
           <div>
             <p className="text-sm font-semibold">{t('peak_hours')}: 12–2 PM & 7–9 PM</p>
             <p className="text-xs text-muted-foreground">
-              {(new Date().getHours() >= 12 && new Date().getHours() <= 14) || (new Date().getHours() >= 19 && new Date().getHours() <= 21)
+              {(new Date().getHours() >= 12 && new Date().getHours() <= 14) ||
+               (new Date().getHours() >= 19 && new Date().getHours() <= 21)
                 ? t('high_demand') : t('wait_peak')}
             </p>
           </div>
@@ -294,7 +387,6 @@ const RiderDashboard = () => {
         <div className="mb-5">
           <h2 className="font-display font-semibold text-base mb-3">{t('active_delivery')}</h2>
 
-          {/* Rider Map */}
           {myLat && myLng && (
             <RiderMapView
               myLat={myLat} myLng={myLng}
@@ -308,6 +400,7 @@ const RiderDashboard = () => {
             <p className="font-semibold text-sm">🏪 {activeDelivery.shops?.shop_name || 'Shop'}</p>
             <p className="text-xs text-muted-foreground mt-1">📍 {t('pick_up_from')}: {activeDelivery.shops?.address || 'N/A'}</p>
             <p className="text-xs text-muted-foreground">🏠 {t('deliver_to')}: {activeDelivery.delivery_address}</p>
+
             {activeDelivery.customer_note && (
               <div className="bg-warning/10 rounded-lg p-2 mt-2 border border-warning/20">
                 <p className="text-xs font-bold text-warning">📝 {t('customer_note')}</p>
@@ -315,12 +408,15 @@ const RiderDashboard = () => {
               </div>
             )}
 
-            {/* Chat button */}
-            <button onClick={() => setShowChat(true)} className="mt-2 flex items-center gap-2 text-primary text-sm font-semibold min-h-[36px]">
-              <MessageCircle className="w-4 h-4" /> {t('chat_with_customer')}
-            </button>
+            {activeDelivery.customer_id && (
+              <button onClick={() => setShowChat(true)} className="mt-2 flex items-center gap-2 text-primary text-sm font-semibold min-h-[36px]">
+                <MessageCircle className="w-4 h-4" /> {t('chat_with_customer')}
+              </button>
+            )}
 
-            <p className="text-[10px] font-bold uppercase mt-2 text-primary">Status: {activeDelivery.status?.replace('_', ' ')}</p>
+            <p className="text-[10px] font-bold uppercase mt-2 text-primary">
+              Status: {activeDelivery.status?.replace('_', ' ')}
+            </p>
 
             {activeDelivery.status === 'picked_up' && (
               <div className="mt-3">
@@ -333,18 +429,27 @@ const RiderDashboard = () => {
                     if (f) { setDeliveryPhoto(f); setDeliveryPhotoPreview(URL.createObjectURL(f)); }
                   }} />
                 </label>
-                {deliveryPhotoPreview && <img src={deliveryPhotoPreview} alt="Proof" className="w-full h-32 object-cover rounded-lg mt-2" />}
+                {deliveryPhotoPreview && (
+                  <img src={deliveryPhotoPreview} alt="Proof" className="w-full h-32 object-cover rounded-lg mt-2" />
+                )}
               </div>
             )}
 
             <div className="flex gap-2 mt-3">
               {activeDelivery.status === 'confirmed' && (
-                <button onClick={() => updateDeliveryStatus('picked_up')} className="flex-1 bg-primary text-primary-foreground rounded-lg p-3 font-semibold text-sm min-h-[44px]">
+                <button
+                  onClick={() => updateDeliveryStatus('picked_up')}
+                  className="flex-1 bg-primary text-primary-foreground rounded-lg p-3 font-semibold text-sm min-h-[44px]"
+                >
                   {t('mark_picked_up')}
                 </button>
               )}
               {activeDelivery.status === 'picked_up' && (
-                <button onClick={() => updateDeliveryStatus('delivered')} disabled={delivering} className="flex-1 bg-accent text-accent-foreground rounded-lg p-3 font-semibold text-sm min-h-[44px] disabled:opacity-50">
+                <button
+                  onClick={() => updateDeliveryStatus('delivered')}
+                  disabled={delivering}
+                  className="flex-1 bg-accent text-accent-foreground rounded-lg p-3 font-semibold text-sm min-h-[44px] disabled:opacity-50"
+                >
                   {delivering ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : t('mark_delivered')}
                 </button>
               )}
@@ -366,11 +471,16 @@ const RiderDashboard = () => {
                   <p className="font-semibold text-sm">🏪 {order.shops?.shop_name || 'Shop'}</p>
                   <p className="text-xs text-muted-foreground mt-1">📍 {order.delivery_address}</p>
                   <p className="text-xs text-muted-foreground">{order.order_items?.length || 0} {t('items')}</p>
-                  {order.customer_note && <p className="text-xs text-warning mt-1">📝 {order.customer_note}</p>}
+                  {order.customer_note && (
+                    <p className="text-xs text-warning mt-1">📝 {order.customer_note}</p>
+                  )}
                   <div className="flex items-center justify-between mt-3">
                     <span className="font-display font-bold text-accent">Rs {order.delivery_fee} {t('fee')}</span>
-                    <button onClick={() => acceptOrder(order.id)} disabled={accepting === order.id}
-                      className="bg-primary text-primary-foreground rounded-lg px-4 py-2.5 font-semibold text-sm min-h-[44px] disabled:opacity-50">
+                    <button
+                      onClick={() => acceptOrder(order.id)}
+                      disabled={accepting === order.id}
+                      className="bg-primary text-primary-foreground rounded-lg px-4 py-2.5 font-semibold text-sm min-h-[44px] disabled:opacity-50"
+                    >
                       {accepting === order.id ? <Loader2 className="w-4 h-4 animate-spin" /> : t('accept')}
                     </button>
                   </div>
