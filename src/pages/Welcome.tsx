@@ -1,7 +1,6 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ShoppingBag, Bike, Wheat, UtensilsCrossed, DoorOpen } from 'lucide-react';
-import dukkandoorLogo from '@/assets/dukkandoor-logo.png';
+import { ShoppingBag, Bike, Wheat, UtensilsCrossed, Store } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import LanguageToggle from '@/components/LanguageToggle';
@@ -24,261 +23,312 @@ const Welcome = () => {
   }, [loading, isAuthenticated, user, navigate]);
 
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <Loader2 className="w-8 h-8 animate-spin text-primary" />
+    <div className="min-h-screen flex items-center justify-center" style={{ background: '#fff8f3' }}>
+      <Loader2 className="w-8 h-8 animate-spin" style={{ color: '#ea580c' }} />
     </div>
   );
   if (isAuthenticated) return null;
 
   return (
-    <div className="min-h-screen flex flex-col" style={{
-      background: 'linear-gradient(160deg, #fff8f3 0%, #fff3e8 50%, #fef9f5 100%)',
+    <div className="min-h-screen flex flex-col relative overflow-hidden" style={{
+      background: 'linear-gradient(170deg, #fff8f3 0%, #ffeedd 40%, #fff5ec 100%)',
     }}>
-      {/* Decorative top pattern */}
-      <div className="absolute top-0 left-0 right-0 h-48 overflow-hidden pointer-events-none">
+
+      {/* Background decorative blobs */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
         <div style={{
-          position: 'absolute', top: '-60px', left: '-40px',
-          width: '200px', height: '200px', borderRadius: '50%',
-          background: 'rgba(234, 88, 12, 0.06)',
+          position: 'absolute', top: '-80px', right: '-60px',
+          width: '280px', height: '280px', borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(234,88,12,0.1) 0%, transparent 70%)',
         }} />
         <div style={{
-          position: 'absolute', top: '-30px', right: '-50px',
+          position: 'absolute', bottom: '80px', left: '-80px',
+          width: '240px', height: '240px', borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(234,88,12,0.07) 0%, transparent 70%)',
+        }} />
+        <div style={{
+          position: 'absolute', top: '35%', right: '-40px',
           width: '160px', height: '160px', borderRadius: '50%',
-          background: 'rgba(234, 88, 12, 0.05)',
+          background: 'radial-gradient(circle, rgba(234,88,12,0.05) 0%, transparent 70%)',
         }} />
-        <div style={{
-          position: 'absolute', top: '40px', left: '30%',
-          width: '80px', height: '80px', borderRadius: '50%',
-          background: 'rgba(234, 88, 12, 0.04)',
-        }} />
+        {/* Subtle dot grid */}
+        <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0.3 }}>
+          <defs>
+            <pattern id="dots" x="0" y="0" width="24" height="24" patternUnits="userSpaceOnUse">
+              <circle cx="2" cy="2" r="1" fill="rgba(234,88,12,0.2)" />
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#dots)" />
+        </svg>
       </div>
 
       {/* Language toggle */}
-      <div className="absolute top-4 end-4 z-10">
+      <div className="absolute top-4 end-4 z-20">
         <LanguageToggle />
       </div>
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col items-center justify-center px-5 py-8 max-w-sm mx-auto w-full">
+      <div className="flex-1 flex flex-col items-center justify-between px-5 pt-10 pb-6 max-w-sm mx-auto w-full relative z-10">
 
-        {/* Hero section */}
-        <div className="flex flex-col items-center text-center mb-8 animate-fade-in">
-          {/* Logo */}
-          <img src={dukkandoorLogo} alt="DukkanDoor Logo" style={{
-            width: '160px', height: 'auto',
-            marginBottom: '20px',
-          }} />
+        {/* TOP — Logo + trust badges */}
+        <div className="flex flex-col items-center w-full">
 
-          {/* App name */}
-          <h1 style={{
-            fontSize: '32px', fontWeight: 800,
-            color: '#1a1a1a', letterSpacing: '-0.5px',
-            marginBottom: '6px', lineHeight: 1.1,
-          }}>
-            DukkanDoor
-          </h1>
+          {/* Logo image — no duplicate text needed, logo has it all */}
+          <div className="animate-fade-in" style={{ marginBottom: '12px' }}>
+            <img
+              src="/logo.png"
+              alt="DukkanDoor"
+              style={{
+                width: '220px',
+                height: 'auto',
+                objectFit: 'contain',
+                filter: 'drop-shadow(0 4px 16px rgba(234,88,12,0.15))',
+              }}
+            />
+          </div>
 
-          {/* Single tagline — fixed duplicate bug */}
-          <p style={{
-            fontSize: '15px', color: '#78716c',
-            fontWeight: 400, lineHeight: 1.5,
-            maxWidth: '220px',
-          }}>
-            {t('tagline')}
-          </p>
-
-          {/* Decorative divider */}
+          {/* Trust badges row */}
           <div style={{
-            display: 'flex', alignItems: 'center', gap: '8px',
-            marginTop: '20px', marginBottom: '4px',
+            display: 'flex', gap: '8px', marginBottom: '28px',
+            flexWrap: 'wrap', justifyContent: 'center',
           }}>
-            <div style={{ width: '28px', height: '1.5px', background: 'rgba(234,88,12,0.2)', borderRadius: '2px' }} />
-            <span style={{ fontSize: '16px' }}>🏘️</span>
-            <div style={{ width: '28px', height: '1.5px', background: 'rgba(234,88,12,0.2)', borderRadius: '2px' }} />
+            {[
+              { emoji: '⚡', text: 'Fast Delivery' },
+              { emoji: '🏘️', text: 'Local Shops' },
+              { emoji: '🔒', text: 'Secure' },
+            ].map(badge => (
+              <div key={badge.text} style={{
+                display: 'flex', alignItems: 'center', gap: '4px',
+                background: 'rgba(255,255,255,0.7)',
+                border: '1px solid rgba(234,88,12,0.15)',
+                borderRadius: '100px',
+                padding: '4px 10px',
+                backdropFilter: 'blur(8px)',
+              }}>
+                <span style={{ fontSize: '11px' }}>{badge.emoji}</span>
+                <span style={{ fontSize: '11px', fontWeight: 600, color: '#78716c' }}>{badge.text}</span>
+              </div>
+            ))}
           </div>
         </div>
 
-        {/* Buttons section */}
-        <div className="w-full space-y-2.5">
-
-          {/* Section label */}
-          <p style={{
-            fontSize: '11px', fontWeight: 600,
-            color: '#a8a29e', letterSpacing: '1.5px',
-            textTransform: 'uppercase', textAlign: 'center',
-            marginBottom: '4px',
+        {/* MIDDLE — Role selection */}
+        <div className="w-full">
+          {/* Section header */}
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: '10px',
+            marginBottom: '14px',
           }}>
-            Who are you?
-          </p>
-
-          {/* Customer — primary CTA */}
-          <button
-            onClick={() => navigate('/auth', { state: { role: 'customer' } })}
-            style={{
-              width: '100%', height: '60px',
-              background: 'linear-gradient(135deg, #ea580c 0%, #c2410c 100%)',
-              border: 'none', borderRadius: '16px',
-              display: 'flex', alignItems: 'center', gap: '12px',
-              padding: '0 20px', cursor: 'pointer',
-              boxShadow: '0 4px 16px rgba(234,88,12,0.3)',
-              transition: 'transform 0.15s, box-shadow 0.15s',
-            }}
-            onMouseEnter={e => {
-              (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-1px)';
-              (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 6px 20px rgba(234,88,12,0.4)';
-            }}
-            onMouseLeave={e => {
-              (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(0)';
-              (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 4px 16px rgba(234,88,12,0.3)';
-            }}
-          >
-            <div style={{
-              width: '36px', height: '36px', borderRadius: '10px',
-              background: 'rgba(255,255,255,0.2)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+            <div style={{ flex: 1, height: '1px', background: 'rgba(234,88,12,0.15)' }} />
+            <p style={{
+              fontSize: '11px', fontWeight: 700, color: '#b45309',
+              letterSpacing: '2px', textTransform: 'uppercase', whiteSpace: 'nowrap',
             }}>
-              <ShoppingBag style={{ width: '18px', height: '18px', color: 'white' }} />
-            </div>
-            <div style={{ flex: 1, textAlign: 'left' }}>
-              <p style={{ color: 'white', fontSize: '15px', fontWeight: 700, lineHeight: 1.2 }}>
-                {t('i_want_to_order')}
-              </p>
-              <p style={{ color: 'rgba(255,255,255,0.75)', fontSize: '11px', marginTop: '1px' }}>
-                Browse shops & get delivery
-              </p>
-            </div>
-          </button>
+              Get Started As
+            </p>
+            <div style={{ flex: 1, height: '1px', background: 'rgba(234,88,12,0.15)' }} />
+          </div>
 
-          {/* Shopkeeper */}
-          <button
-            onClick={() => navigate('/auth', { state: { role: 'shopkeeper' } })}
-            style={{
-              width: '100%', height: '56px',
-              background: 'white',
-              border: '1.5px solid #e7e5e4',
-              borderRadius: '16px',
-              display: 'flex', alignItems: 'center', gap: '12px',
-              padding: '0 20px', cursor: 'pointer',
-              boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
-              transition: 'border-color 0.15s, box-shadow 0.15s',
-            }}
-            onMouseEnter={e => {
-              (e.currentTarget as HTMLButtonElement).style.borderColor = '#ea580c';
-              (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 2px 8px rgba(234,88,12,0.12)';
-            }}
-            onMouseLeave={e => {
-              (e.currentTarget as HTMLButtonElement).style.borderColor = '#e7e5e4';
-              (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 1px 4px rgba(0,0,0,0.05)';
-            }}
-          >
-            <div style={{
-              width: '34px', height: '34px', borderRadius: '10px',
-              background: '#fff7ed',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-            }}>
-              <DoorOpen style={{ width: '17px', height: '17px', color: '#ea580c' }} />
-            </div>
-            <span style={{ color: '#1c1917', fontSize: '15px', fontWeight: 600 }}>
-              {t('im_shopkeeper')}
-            </span>
-          </button>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
 
-          {/* Farmer */}
-          <button
-            onClick={() => navigate('/auth', { state: { role: 'farmer' } })}
-            style={{
-              width: '100%', height: '56px',
-              background: 'white',
-              border: '1.5px solid #e7e5e4',
-              borderRadius: '16px',
-              display: 'flex', alignItems: 'center', gap: '12px',
-              padding: '0 20px', cursor: 'pointer',
-              boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
-              transition: 'border-color 0.15s, box-shadow 0.15s',
-            }}
-            onMouseEnter={e => {
-              (e.currentTarget as HTMLButtonElement).style.borderColor = '#16a34a';
-              (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 2px 8px rgba(22,163,74,0.12)';
-            }}
-            onMouseLeave={e => {
-              (e.currentTarget as HTMLButtonElement).style.borderColor = '#e7e5e4';
-              (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 1px 4px rgba(0,0,0,0.05)';
-            }}
-          >
-            <div style={{
-              width: '34px', height: '34px', borderRadius: '10px',
-              background: '#f0fdf4',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-            }}>
-              <Wheat style={{ width: '17px', height: '17px', color: '#16a34a' }} />
-            </div>
-            <span style={{ color: '#1c1917', fontSize: '15px', fontWeight: 600 }}>
-              {t('im_farmer')}
-            </span>
-          </button>
+            {/* Customer — hero button */}
+            <button
+              onClick={() => navigate('/auth', { state: { role: 'customer' } })}
+              className="animate-fade-in"
+              style={{
+                width: '100%',
+                background: 'linear-gradient(135deg, #ea580c 0%, #c2410c 100%)',
+                border: 'none', borderRadius: '18px',
+                display: 'flex', alignItems: 'center', gap: '14px',
+                padding: '14px 18px', cursor: 'pointer',
+                boxShadow: '0 6px 24px rgba(234,88,12,0.35), 0 1px 0 rgba(255,255,255,0.15) inset',
+                transition: 'transform 0.15s, box-shadow 0.15s',
+                animationDelay: '0.05s',
+              }}
+              onMouseEnter={e => {
+                (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-2px)';
+                (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 10px 28px rgba(234,88,12,0.45)';
+              }}
+              onMouseLeave={e => {
+                (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(0)';
+                (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 6px 24px rgba(234,88,12,0.35)';
+              }}
+            >
+              <div style={{
+                width: '44px', height: '44px', borderRadius: '12px',
+                background: 'rgba(255,255,255,0.22)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+              }}>
+                <ShoppingBag style={{ width: '22px', height: '22px', color: 'white' }} />
+              </div>
+              <div style={{ flex: 1, textAlign: 'left' }}>
+                <p style={{ color: 'white', fontSize: '16px', fontWeight: 800, lineHeight: 1.2, margin: 0 }}>
+                  {t('i_want_to_order')}
+                </p>
+                <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: '12px', marginTop: '2px', margin: '2px 0 0' }}>
+                  Browse local shops · Get it delivered
+                </p>
+              </div>
+              <div style={{
+                width: '28px', height: '28px', borderRadius: '50%',
+                background: 'rgba(255,255,255,0.2)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                fontSize: '14px',
+              }}>
+                →
+              </div>
+            </button>
 
-          {/* Hotel */}
-          <button
-            onClick={() => navigate('/auth', { state: { role: 'hotel' } })}
-            style={{
-              width: '100%', height: '56px',
-              background: 'white',
-              border: '1.5px solid #e7e5e4',
-              borderRadius: '16px',
-              display: 'flex', alignItems: 'center', gap: '12px',
-              padding: '0 20px', cursor: 'pointer',
-              boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
-              transition: 'border-color 0.15s, box-shadow 0.15s',
-            }}
-            onMouseEnter={e => {
-              (e.currentTarget as HTMLButtonElement).style.borderColor = '#ea580c';
-              (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 2px 8px rgba(234,88,12,0.12)';
-            }}
-            onMouseLeave={e => {
-              (e.currentTarget as HTMLButtonElement).style.borderColor = '#e7e5e4';
-              (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 1px 4px rgba(0,0,0,0.05)';
-            }}
-          >
-            <div style={{
-              width: '34px', height: '34px', borderRadius: '10px',
-              background: '#fff7ed',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-            }}>
-              <UtensilsCrossed style={{ width: '17px', height: '17px', color: '#ea580c' }} />
-            </div>
-            <span style={{ color: '#1c1917', fontSize: '15px', fontWeight: 600 }}>
-              {t('im_hotel')}
-            </span>
-          </button>
+            {/* Business roles row — 2 columns */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
 
-          {/* Rider — subtle link style */}
-          <button
-            onClick={() => navigate('/auth', { state: { role: 'rider' } })}
-            style={{
-              width: '100%', minHeight: '44px',
-              background: 'transparent', border: 'none',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-              cursor: 'pointer', marginTop: '4px',
-              padding: '8px',
-            }}
-          >
-            <Bike style={{ width: '15px', height: '15px', color: '#a8a29e' }} />
-            <span style={{
-              fontSize: '13px', color: '#78716c', fontWeight: 500,
-              borderBottom: '1px dashed #d6d3d1',
-              paddingBottom: '1px',
-            }}>
-              {t('join_rider')}
-            </span>
-          </button>
+              {/* Shopkeeper */}
+              <button
+                onClick={() => navigate('/auth', { state: { role: 'shopkeeper' } })}
+                style={{
+                  background: 'rgba(255,255,255,0.85)',
+                  border: '1.5px solid rgba(234,88,12,0.15)',
+                  borderRadius: '16px',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center',
+                  padding: '16px 10px', cursor: 'pointer', gap: '8px',
+                  backdropFilter: 'blur(8px)',
+                  boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
+                  transition: 'transform 0.15s, box-shadow 0.15s, border-color 0.15s',
+                }}
+                onMouseEnter={e => {
+                  (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-2px)';
+                  (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(234,88,12,0.4)';
+                  (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 6px 16px rgba(234,88,12,0.15)';
+                }}
+                onMouseLeave={e => {
+                  (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(0)';
+                  (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(234,88,12,0.15)';
+                  (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 2px 12px rgba(0,0,0,0.06)';
+                }}
+              >
+                <div style={{
+                  width: '44px', height: '44px', borderRadius: '12px',
+                  background: 'linear-gradient(135deg, #fff7ed, #ffedd5)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  boxShadow: '0 2px 8px rgba(234,88,12,0.12)',
+                }}>
+                  <Store style={{ width: '22px', height: '22px', color: '#ea580c' }} />
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <p style={{ fontSize: '13px', fontWeight: 700, color: '#1c1917', margin: 0 }}>Shopkeeper</p>
+                  <p style={{ fontSize: '10px', color: '#a8a29e', margin: '2px 0 0' }}>Manage your shop</p>
+                </div>
+              </button>
+
+              {/* Farmer */}
+              <button
+                onClick={() => navigate('/auth', { state: { role: 'farmer' } })}
+                style={{
+                  background: 'rgba(255,255,255,0.85)',
+                  border: '1.5px solid rgba(22,163,74,0.15)',
+                  borderRadius: '16px',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center',
+                  padding: '16px 10px', cursor: 'pointer', gap: '8px',
+                  backdropFilter: 'blur(8px)',
+                  boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
+                  transition: 'transform 0.15s, box-shadow 0.15s, border-color 0.15s',
+                }}
+                onMouseEnter={e => {
+                  (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-2px)';
+                  (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(22,163,74,0.4)';
+                  (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 6px 16px rgba(22,163,74,0.15)';
+                }}
+                onMouseLeave={e => {
+                  (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(0)';
+                  (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(22,163,74,0.15)';
+                  (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 2px 12px rgba(0,0,0,0.06)';
+                }}
+              >
+                <div style={{
+                  width: '44px', height: '44px', borderRadius: '12px',
+                  background: 'linear-gradient(135deg, #f0fdf4, #dcfce7)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  boxShadow: '0 2px 8px rgba(22,163,74,0.12)',
+                }}>
+                  <Wheat style={{ width: '22px', height: '22px', color: '#16a34a' }} />
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <p style={{ fontSize: '13px', fontWeight: 700, color: '#1c1917', margin: 0 }}>Farmer 🌾</p>
+                  <p style={{ fontSize: '10px', color: '#a8a29e', margin: '2px 0 0' }}>Order & pickup</p>
+                </div>
+              </button>
+            </div>
+
+            {/* Hotel — full width */}
+            <button
+              onClick={() => navigate('/auth', { state: { role: 'hotel' } })}
+              style={{
+                width: '100%',
+                background: 'rgba(255,255,255,0.85)',
+                border: '1.5px solid rgba(234,88,12,0.15)',
+                borderRadius: '16px',
+                display: 'flex', alignItems: 'center', gap: '14px',
+                padding: '14px 18px', cursor: 'pointer',
+                backdropFilter: 'blur(8px)',
+                boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
+                transition: 'transform 0.15s, box-shadow 0.15s, border-color 0.15s',
+              }}
+              onMouseEnter={e => {
+                (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-2px)';
+                (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(234,88,12,0.4)';
+                (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 6px 16px rgba(234,88,12,0.15)';
+              }}
+              onMouseLeave={e => {
+                (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(0)';
+                (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(234,88,12,0.15)';
+                (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 2px 12px rgba(0,0,0,0.06)';
+              }}
+            >
+              <div style={{
+                width: '44px', height: '44px', borderRadius: '12px',
+                background: 'linear-gradient(135deg, #fff7ed, #ffedd5)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                boxShadow: '0 2px 8px rgba(234,88,12,0.12)',
+              }}>
+                <UtensilsCrossed style={{ width: '20px', height: '20px', color: '#ea580c' }} />
+              </div>
+              <div style={{ flex: 1, textAlign: 'left' }}>
+                <p style={{ fontSize: '14px', fontWeight: 700, color: '#1c1917', margin: 0 }}>
+                  {t('im_hotel')}
+                </p>
+                <p style={{ fontSize: '11px', color: '#a8a29e', margin: '2px 0 0' }}>
+                  List your menu · Receive orders
+                </p>
+              </div>
+            </button>
+
+            {/* Rider — subtle */}
+            <button
+              onClick={() => navigate('/auth', { state: { role: 'rider' } })}
+              style={{
+                width: '100%', minHeight: '44px',
+                background: 'transparent', border: 'none',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                cursor: 'pointer', padding: '6px',
+              }}
+            >
+              <Bike style={{ width: '14px', height: '14px', color: '#a8a29e' }} />
+              <span style={{
+                fontSize: '13px', color: '#78716c', fontWeight: 500,
+                borderBottom: '1px dashed #d6d3d1', paddingBottom: '1px',
+              }}>
+                {t('join_rider')} — Earn money delivering
+              </span>
+            </button>
+          </div>
         </div>
-      </div>
 
-      {/* Bottom tagline */}
-      <div style={{ textAlign: 'center', padding: '12px', paddingBottom: '24px' }}>
-        <p style={{ fontSize: '11px', color: '#c4b5a5', fontWeight: 400 }}>
-          🔒 Safe · Fast · Local
-        </p>
+        {/* BOTTOM — footer */}
+        <div style={{ textAlign: 'center', paddingTop: '8px' }}>
+          <p style={{ fontSize: '11px', color: '#c4b5a5' }}>
+            Proudly serving local communities 🇵🇰
+          </p>
+        </div>
       </div>
     </div>
   );
