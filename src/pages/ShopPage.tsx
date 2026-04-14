@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Star, Clock, Store, Loader2, Flag } from 'lucide-react';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { ArrowLeft, Star, Clock, Store, Loader2, Flag, MapPin } from 'lucide-react';
 import MobileLayout from '@/components/MobileLayout';
 import ProductCard from '@/components/ProductCard';
 import FavoriteButton from '@/components/FavoriteButton';
@@ -17,6 +17,7 @@ import { toast } from 'sonner';
 const ShopPage = () => {
   const { shopId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { session } = useAuth();
   const { totalItems, total } = useCart();
   const [shop, setShop] = useState<Shop | null>(null);
@@ -26,6 +27,10 @@ const ShopPage = () => {
   const [reportReason, setReportReason] = useState('');
   const [reportDesc, setReportDesc] = useState('');
   const [reporting, setReporting] = useState(false);
+
+  // FIX: read farmerMode and farmerProfile from location state
+  const farmerMode = (location.state as any)?.farmerMode || false;
+  const farmerProfile = (location.state as any)?.farmerProfile || null;
 
   useEffect(() => {
     const fetch = async () => {
@@ -40,7 +45,6 @@ const ShopPage = () => {
     fetch();
   }, [shopId]);
 
-  // Check if shop is actually open based on business hours
   const isActuallyOpen = (() => {
     if (!shop?.is_open) return false;
     if (!shop?.business_hours) return shop.is_open;
@@ -115,6 +119,19 @@ const ShopPage = () => {
         </div>
       </div>
 
+      {/* FIX: show farmer delivery banner when in farmer mode */}
+      {farmerMode && (
+        <div className="mx-4 mt-3 bg-accent/10 rounded-xl border border-accent/20 p-3 flex items-center gap-2">
+          <MapPin className="w-4 h-4 text-accent shrink-0" />
+          <div>
+            <p className="text-sm font-semibold text-accent">🌾 Delivering to your farm</p>
+            {farmerProfile?.farm_landmark && (
+              <p className="text-xs text-muted-foreground">{farmerProfile.farm_landmark}</p>
+            )}
+          </div>
+        </div>
+      )}
+
       {!isActuallyOpen && (
         <div className="mx-4 mt-3 bg-warning/10 rounded-xl border border-warning/20 p-3 text-center">
           <p className="text-sm text-warning font-semibold">This shop is currently closed</p>
@@ -137,8 +154,13 @@ const ShopPage = () => {
       {totalItems > 0 && (
         <div className="fixed bottom-0 left-0 right-0 z-50 p-4 safe-bottom">
           <div className="max-w-lg mx-auto">
-            <button onClick={() => navigate('/cart')}
-              className="w-full bg-primary text-primary-foreground rounded-xl p-4 flex items-center justify-between min-h-[56px] active:scale-[0.98] transition-transform shadow-lg">
+            {/* FIX: pass farmerMode and farmerProfile through to CartPage */}
+            <button
+              onClick={() => navigate('/cart', {
+                state: farmerMode ? { farmerMode: true, farmerProfile } : undefined,
+              })}
+              className="w-full bg-primary text-primary-foreground rounded-xl p-4 flex items-center justify-between min-h-[56px] active:scale-[0.98] transition-transform shadow-lg"
+            >
               <span className="font-display font-semibold">{totalItems} items</span>
               <span className="font-display font-bold text-lg">View Cart • Rs {Math.round(total)}</span>
             </button>
@@ -146,7 +168,6 @@ const ShopPage = () => {
         </div>
       )}
 
-      {/* Report Sheet */}
       <Sheet open={reportOpen} onOpenChange={setReportOpen}>
         <SheetContent side="bottom" className="max-h-[80vh] rounded-t-2xl">
           <SheetHeader><SheetTitle className="font-display">Report Shop</SheetTitle></SheetHeader>
