@@ -87,7 +87,7 @@ const AppRoutes = () => (
       {/* Customer */}
       <Route path="/home" element={<ProtectedRoute allowedRoles={['customer']}><CustomerHome /></ProtectedRoute>} />
       <Route path="/shop/:shopId" element={<ProtectedRoute allowedRoles={['customer', 'farmer']}><ShopPage /></ProtectedRoute>} />
-      <Route path="/cart" element={<ProtectedRoute allowedRoles={['customer']}><CartPage /></ProtectedRoute>} />
+      <Route path="/cart" element={<ProtectedRoute allowedRoles={['customer', 'farmer']}><CartPage /></ProtectedRoute>} />
       <Route path="/order-tracking" element={<ProtectedRoute><OrderTracking /></ProtectedRoute>} />
       <Route path="/orders" element={<ProtectedRoute allowedRoles={['customer']}><OrderHistory /></ProtectedRoute>} />
       <Route path="/categories" element={<ProtectedRoute allowedRoles={['customer']}><Categories /></ProtectedRoute>} />
