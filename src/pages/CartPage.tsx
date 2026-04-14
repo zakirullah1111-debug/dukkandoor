@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Minus, Plus, Trash2, MapPin, Locate, Loader2, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,10 +12,23 @@ import { toast } from 'sonner';
 
 const CartPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { items, updateQuantity, removeItem, clearCart, subtotal, deliveryFee, total, shopId } = useCart();
   const { user, session } = useAuth();
   const { t } = useLanguage();
-  const [address, setAddress] = useState(user?.address || '');
+
+  // FIX: read farmerMode and farmerProfile passed from ShopPage
+  const farmerMode = (location.state as any)?.farmerMode || false;
+  const farmerProfile = (location.state as any)?.farmerProfile || null;
+
+  // FIX: for farmers, pre-fill address from farm landmark — fixes the disabled button bug
+  const getDefaultAddress = () => {
+    if (farmerMode && farmerProfile?.farm_landmark) return farmerProfile.farm_landmark;
+    if (farmerMode && farmerProfile?.farm_lat) return `Farm Location (${farmerProfile.farm_lat.toFixed(4)}, ${farmerProfile.farm_lng.toFixed(4)})`;
+    return user?.address || '';
+  };
+
+  const [address, setAddress] = useState(getDefaultAddress());
   const [customerNote, setCustomerNote] = useState('');
   const [placing, setPlacing] = useState(false);
   const [locating, setLocating] = useState(false);
@@ -29,7 +42,6 @@ const CartPage = () => {
     }
   }, [shopId]);
 
-  // Geocode address for order coordinates
   const geocodeAddress = async (addr: string): Promise<{ lat: number; lng: number } | null> => {
     try {
       const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addr)}&limit=1`);
@@ -59,11 +71,24 @@ const CartPage = () => {
     if (!address.trim() || !session?.user) return;
     setPlacing(true);
     try {
-      // Geocode delivery and shop addresses
-      const [deliveryCoords, shopData] = await Promise.all([
-        geocodeAddress(address.trim()),
-        shopId ? (supabase as any).from('shops').select('address').eq('id', shopId).single() : null,
-      ]);
+      // FIX: for farmer orders, use saved farm coordinates directly — no geocoding needed
+      let deliveryLat: number | null = null;
+      let deliveryLng: number | null = null;
+
+      if (farmerMode && farmerProfile?.farm_lat) {
+        // Use exact farm GPS coordinates saved during farmer setup
+        deliveryLat = farmerProfile.farm_lat;
+        deliveryLng = farmerProfile.farm_lng;
+      } else {
+        const deliveryCoords = await geocodeAddress(address.trim());
+        deliveryLat = deliveryCoords?.lat || null;
+        deliveryLng = deliveryCoords?.lng || null;
+      }
+
+      // Get shop coordinates for map tracking
+      const shopData = shopId
+        ? await (supabase as any).from('shops').select('address').eq('id', shopId).single()
+        : null;
       let shopCoords = null;
       if (shopData?.data?.address) {
         shopCoords = await geocodeAddress(shopData.data.address);
@@ -78,10 +103,12 @@ const CartPage = () => {
         delivery_address: address.trim(),
         payment_method: 'cash_on_delivery',
         customer_note: customerNote.trim(),
-        delivery_lat: deliveryCoords?.lat || null,
-        delivery_lng: deliveryCoords?.lng || null,
+        delivery_lat: deliveryLat,
+        delivery_lng: deliveryLng,
         shop_lat: shopCoords?.lat || null,
         shop_lng: shopCoords?.lng || null,
+        // FIX: set correct order_type so farmer's order history shows it correctly
+        order_type: farmerMode ? 'farm_shop_order' : null,
       }).select().single();
 
       if (orderErr) throw orderErr;
@@ -109,7 +136,12 @@ const CartPage = () => {
         <div className="text-6xl mb-4">🛒</div>
         <h2 className="font-display text-xl font-bold mb-2">{t('cart_empty')}</h2>
         <p className="text-muted-foreground text-center mb-6">{t('cart_empty_desc')}</p>
-        <Button onClick={() => navigate('/home')} className="h-12 rounded-xl font-display">{t('browse_shops')}</Button>
+        <Button
+          onClick={() => navigate(farmerMode ? '/farmer/shop-order' : '/home')}
+          className="h-12 rounded-xl font-display"
+        >
+          {t('browse_shops')}
+        </Button>
       </div>
     );
   }
@@ -123,6 +155,21 @@ const CartPage = () => {
           </button>
           <h1 className="font-display text-xl font-bold">{t('your_cart')}</h1>
         </div>
+
+        {/* FIX: show farm delivery banner for farmer orders */}
+        {farmerMode && (
+          <div className="bg-accent/10 rounded-xl border border-accent/20 p-3 mb-4 flex items-center gap-2">
+            <MapPin className="w-4 h-4 text-accent shrink-0" />
+            <div>
+              <p className="text-sm font-semibold text-accent">🌾 Delivering to your farm</p>
+              <p className="text-xs text-muted-foreground">
+                {farmerProfile?.farm_lat
+                  ? 'Using your saved farm GPS location'
+                  : 'Please enter your farm address below'}
+              </p>
+            </div>
+          </div>
+        )}
 
         {shopName && <p className="text-sm text-muted-foreground mb-4">{t('from')} {shopName}</p>}
 
@@ -147,15 +194,29 @@ const CartPage = () => {
         </div>
 
         <div className="mb-4">
-          <label className="text-sm font-medium mb-1.5 block">{t('delivery_address')}</label>
+          <label className="text-sm font-medium mb-1.5 block">
+            {farmerMode ? '📍 Farm Delivery Address' : t('delivery_address')}
+          </label>
           <div className="relative">
             <MapPin className="absolute start-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-            <Input placeholder={t('enter_address')} value={address} onChange={e => setAddress(e.target.value)} className="h-14 ps-10 pe-12 rounded-xl text-base" />
+            <Input
+              placeholder={farmerMode ? 'Your farm location or landmark' : t('enter_address')}
+              value={address}
+              onChange={e => setAddress(e.target.value)}
+              className="h-14 ps-10 pe-12 rounded-xl text-base"
+            />
           </div>
-          <button onClick={getCurrentLocation} disabled={locating} className="mt-2 flex items-center gap-2 text-sm text-primary font-medium min-h-[40px] active:scale-95 transition-transform">
-            {locating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Locate className="w-4 h-4" />}
-            {locating ? t('detecting_location') : t('use_current_location')}
-          </button>
+          {/* FIX: for farmers with saved GPS, show a note that their farm location will be used */}
+          {farmerMode && farmerProfile?.farm_lat ? (
+            <p className="text-xs text-accent mt-1.5 flex items-center gap-1">
+              ✅ Your saved farm GPS coordinates will be used for map tracking
+            </p>
+          ) : (
+            <button onClick={getCurrentLocation} disabled={locating} className="mt-2 flex items-center gap-2 text-sm text-primary font-medium min-h-[40px] active:scale-95 transition-transform">
+              {locating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Locate className="w-4 h-4" />}
+              {locating ? t('detecting_location') : t('use_current_location')}
+            </button>
+          )}
         </div>
 
         <div className="mb-6">
@@ -163,7 +224,13 @@ const CartPage = () => {
             <MessageSquare className="w-4 h-4 text-muted-foreground" />
             {t('add_note_shop')}
           </label>
-          <Textarea placeholder={t('note_placeholder')} value={customerNote} onChange={e => setCustomerNote(e.target.value)} className="rounded-xl text-sm" maxLength={500} />
+          <Textarea
+            placeholder={t('note_placeholder')}
+            value={customerNote}
+            onChange={e => setCustomerNote(e.target.value)}
+            className="rounded-xl text-sm"
+            maxLength={500}
+          />
         </div>
 
         <div className="bg-card rounded-xl border border-border p-4 space-y-2 mb-6">
@@ -172,7 +239,11 @@ const CartPage = () => {
           <div className="border-t border-border pt-2 flex justify-between"><span className="font-display font-bold">{t('total')}</span><span className="font-display font-bold text-lg">Rs {Math.round(total)}</span></div>
         </div>
 
-        <Button onClick={handlePlaceOrder} disabled={!address.trim() || placing} className="w-full h-14 text-base font-display font-semibold rounded-xl mb-6">
+        <Button
+          onClick={handlePlaceOrder}
+          disabled={!address.trim() || placing}
+          className="w-full h-14 text-base font-display font-semibold rounded-xl mb-6"
+        >
           {placing ? <><Loader2 className="w-5 h-5 animate-spin me-2" /> {t('placing_order')}</> : t('place_order_cod')}
         </Button>
       </div>
