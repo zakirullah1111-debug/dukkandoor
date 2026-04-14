@@ -47,11 +47,15 @@ const FarmerSetup = () => {
   };
 
   const handleFinish = async () => {
-    if (!session?.user) return;
+    if (!session?.user) {
+      toast.error('Session expired. Please log in again.');
+      navigate('/', { replace: true });
+      return;
+    }
     setSaving(true);
     try {
       const validContacts = contacts.filter(c => c.phone.trim().length >= 10);
-      await (supabase as any).from('farmer_profiles').insert({
+      const { error } = await (supabase as any).from('farmer_profiles').insert({
         user_id: session.user.id,
         full_name: user?.name || '',
         farm_lat: farmLat,
@@ -59,6 +63,14 @@ const FarmerSetup = () => {
         farm_landmark: farmLandmark.trim() || null,
         saved_contacts: validContacts.length > 0 ? validContacts : [],
       });
+      if (error) {
+        // If duplicate, just proceed to dashboard
+        if (error.code === '23505') {
+          navigate('/farmer', { replace: true });
+          return;
+        }
+        throw error;
+      }
       toast.success(t('success'));
       navigate('/farmer', { replace: true });
     } catch (err: any) {
